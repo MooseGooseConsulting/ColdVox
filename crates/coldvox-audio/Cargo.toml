@@ -19,7 +19,7 @@ tokio = { version = "1.52", features = ["sync", "rt"] }
 tracing = "0.1"
 anyhow = "1.0"
 thiserror = "2.0"
-libc = "0.2.185"
+libc = "0.2.186"
 
 [features]
 default = []
