@@ -16,8 +16,7 @@ use coldvox_stt::plugin::SttPlugin;
 use coldvox_stt::plugins::http_remote::{HttpRemoteConfig, HttpRemotePlugin};
 use coldvox_stt::types::{TranscriptionConfig, TranscriptionEvent};
 
-const EXPECTED_TRANSCRIPT: &str =
-    "On august twenty seventh, eighteen thirty seven, she writes.";
+const EXPECTED_TRANSCRIPT: &str = "On august twenty seventh, eighteen thirty seven, she writes.";
 
 fn load_test_1_samples() -> Vec<i16> {
     let wav_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -61,10 +60,7 @@ async fn canonical_parakeet_cpu_transcribes_test_1_exactly() {
     let samples = load_test_1_samples();
     assert!(!samples.is_empty(), "test_1.wav yielded no samples");
 
-    plugin
-        .process_audio(&samples)
-        .await
-        .expect("process_audio");
+    plugin.process_audio(&samples).await.expect("process_audio");
 
     let event = plugin
         .finalize()

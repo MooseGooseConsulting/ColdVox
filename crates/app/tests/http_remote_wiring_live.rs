@@ -19,8 +19,7 @@ use coldvox_stt::plugins::http_remote::HttpRemotePlugin;
 use coldvox_stt::types::{TranscriptionConfig, TranscriptionEvent};
 use serial_test::serial;
 
-const EXPECTED_TRANSCRIPT: &str =
-    "On august twenty seventh, eighteen thirty seven, she writes.";
+const EXPECTED_TRANSCRIPT: &str = "On august twenty seventh, eighteen thirty seven, she writes.";
 
 fn repo_root() -> PathBuf {
     // crates/app/ -> crates/ -> repo root
@@ -33,8 +32,8 @@ fn repo_root() -> PathBuf {
 
 fn load_test_1_samples() -> Vec<i16> {
     let wav = repo_root().join("crates/app/test_data/test_1.wav");
-    let mut reader = hound::WavReader::open(&wav)
-        .unwrap_or_else(|e| panic!("open {}: {e}", wav.display()));
+    let mut reader =
+        hound::WavReader::open(&wav).unwrap_or_else(|e| panic!("open {}: {e}", wav.display()));
     let spec = reader.spec();
     assert_eq!(spec.sample_rate, 16_000);
     assert_eq!(spec.channels, 1);
