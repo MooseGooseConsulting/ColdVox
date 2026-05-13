@@ -162,41 +162,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     state_manager.transition(AppState::Running)?;
     tracing::info!("Application state: Running");
 
-    // Build STT configuration from settings
-    let stt_selection = {
-        use coldvox_stt::plugin::{FailoverConfig, GcPolicy, MetricsConfig, PluginSelectionConfig};
-
-        let failover = FailoverConfig {
-            failover_threshold: settings.stt.failover_threshold,
-            failover_cooldown_secs: settings.stt.failover_cooldown_secs,
-        };
-
-        let gc_policy = GcPolicy {
-            model_ttl_secs: settings.stt.model_ttl_secs,
-            enabled: !settings.stt.disable_gc,
-        };
-
-        let metrics = MetricsConfig {
-            log_interval_secs: if settings.stt.metrics_log_interval_secs == 0 {
-                None
-            } else {
-                Some(settings.stt.metrics_log_interval_secs)
-            },
-            debug_dump_events: settings.stt.debug_dump_events,
-        };
-
-        Some(PluginSelectionConfig {
-            preferred_plugin: settings.stt.preferred,
-            fallback_plugins: settings.stt.fallbacks,
-            require_local: settings.stt.require_local,
-            max_memory_mb: settings.stt.max_mem_mb,
-            required_language: settings.stt.language,
-            failover: Some(failover),
-            gc_policy: Some(gc_policy),
-            metrics: Some(metrics),
-            auto_extract_model: settings.stt.auto_extract,
-        })
-    };
+    let stt_selection = Some(
+        settings
+            .runtime_plugin_selection()
+            .map_err(std::io::Error::other)?,
+    );
 
     let device = settings.device.clone();
     let resampler_quality = match settings.resampler_quality.to_lowercase().as_str() {

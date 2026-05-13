@@ -1,16 +1,30 @@
-# Windows live override for the supported local GPU path.
-# Use via `COLDVOX_CONFIG_PATH=config/windows-parakeet.toml`.
+# Windows live override for the canonical HTTP-remote Parakeet path.
+# Use via `COLDVOX_CONFIG_PATH=config/windows-parakeet.toml` or the
+# `scripts/run-coldvox.ps1` / `just windows-live` entrypoints.
 #
 # The normal startup path still discovers `config/default.toml`.
 # `config/plugins.json` remains plugin-manager persistence and does not replace
 # this file when launching `coldvox` directly.
+#
+# This profile targets the parakeet-cpu container brought up by
+# `ops/parakeet/docker-compose.yml` on http://localhost:5092 (OpenAI-compatible
+# /v1/audio/transcriptions API). Bring it up with:
+#
+#     just integration-parakeet
+#
+# or directly with:
+#
+#     docker compose -f ops/parakeet/docker-compose.yml up -d parakeet-cpu
+#
+# The optional GPU profile (parakeet-gpu, port 8200) uses a different
+# non-OpenAI API surface and is not the wired default.
 
 [injection]
 allow_enigo = true
 
 [stt]
-preferred = "parakeet"
+preferred = "http-remote"
 fallbacks = []
-require_local = true
+require_local = false
 language = "en"
 

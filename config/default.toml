@@ -55,9 +55,8 @@ min_success_rate = 0.3           # Minimum success rate before fallback
 min_sample_size = 5              # Samples before trusting success rate
 
 [stt]
-# Keep the checked-in startup profile test-friendly and deterministic.
-# Use COLDVOX_CONFIG_PATH=config/windows-parakeet.toml on CUDA-capable Windows machines for the live Parakeet profile.
-preferred = "mock"
+# The canonical startup plugin selection lives in config/plugins.json.
+# This file carries runtime policy and the canonical HTTP remote transport settings.
 fallbacks = []
 require_local = false
 # max_mem_mb = 1024               # Memory limit in MB (omit for no limit)
@@ -71,7 +70,7 @@ debug_dump_events = false
 auto_extract = true
 
 [stt.remote]
-# Transport defaults used by the real STT backends, including the Windows Parakeet live profile.
+# Transport defaults for the canonical Parakeet HTTP container profile.
 base_url = "http://localhost:5092"
 api_path = "/v1/audio/transcriptions"
 health_path = "/health"
@@ -89,8 +88,5 @@ max_audio_seconds = 30
 max_payload_bytes = 2621440
 
 [stt.remote.auth]
-# Optional auth placeholder. Leave unset for the default mock and Windows live profiles.
+# Optional auth placeholder for non-default remote backends.
 # bearer_token_env_var = "COLDVOX_STT_REMOTE_BEARER_TOKEN"
-
-## The default profile intentionally stays mock so tests and local runs are deterministic.
-## Live Windows Parakeet runs should opt in explicitly via COLDVOX_CONFIG_PATH.

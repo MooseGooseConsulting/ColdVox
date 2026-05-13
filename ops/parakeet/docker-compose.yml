@@ -2,7 +2,9 @@ services:
   # Canonical ColdVox wave-1 HTTP STT container profile.
   # Pattern source: D:\LocalLargeLanguageModels\parakeet-stt\docker-compose.yml
   parakeet-cpu:
-    image: ghcr.io/achetronic/parakeet:latest
+    # Pinned by digest for supply-chain integrity; bump deliberately after verifying upstream changes.
+    # Tag at time of pin: ghcr.io/achetronic/parakeet:latest
+    image: ghcr.io/achetronic/parakeet@sha256:636a2dd1fb16a9624af0b4b3cded0231919f5d3124d43da5b4377359ed42c002
     ports:
       - "5092:5092"
     volumes:

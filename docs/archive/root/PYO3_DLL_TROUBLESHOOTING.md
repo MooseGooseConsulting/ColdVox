@@ -1,3 +1,13 @@
+---
+doc_type: troubleshooting
+subsystem: dependencies
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived troubleshooting guide for PyO3 DLL loading issues."
+signals: ['pyo3', 'dll', 'troubleshooting', 'archive']
+---
 # PyO3 DLL_NOT_FOUND Troubleshooting Guide
 
 Quick reference for diagnosing and resolving DLL loading issues in ColdVox's PyO3 bindings.

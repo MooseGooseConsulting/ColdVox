@@ -378,6 +378,65 @@ def check_python_version_consistency() -> CheckResult:
             message="No Python version declarations found"
         )
 
+    def parse_major_minor(value: str) -> tuple[int, int] | None:
+        match = re.search(r'(\d+)\.(\d+)', value)
+        if not match:
+            return None
+        return (int(match.group(1)), int(match.group(2)))
+
+    def requirement_allows_exact(requirement: str, exact: tuple[int, int]) -> bool | None:
+        saw_constraint = False
+        for raw_part in requirement.split(","):
+            part = raw_part.strip()
+            match = re.match(r'(>=|>|<=|<|==)?\s*(\d+\.\d+)', part)
+            if not match:
+                continue
+
+            saw_constraint = True
+            op = match.group(1) or "=="
+            version = parse_major_minor(match.group(2))
+            if version is None:
+                continue
+
+            if op == ">=" and exact < version:
+                return False
+            if op == ">" and exact <= version:
+                return False
+            if op == "<=" and exact > version:
+                return False
+            if op == "<" and exact >= version:
+                return False
+            if op == "==" and exact != version:
+                return False
+
+        return True if saw_constraint else None
+
+    exact_versions: dict[str, tuple[int, int]] = {}
+    range_versions: dict[str, str] = {}
+    for source, version in versions.items():
+        if any(op in version for op in [">", "<", "=", "~"]):
+            range_versions[source] = version
+            continue
+
+        parsed = parse_major_minor(version)
+        if parsed:
+            exact_versions[source] = parsed
+
+    unique_exact_versions = set(exact_versions.values())
+    if len(unique_exact_versions) == 1:
+        exact = next(iter(unique_exact_versions))
+        incompatible = [
+            f"{source}: {requirement}"
+            for source, requirement in sorted(range_versions.items())
+            if requirement_allows_exact(requirement, exact) is False
+        ]
+        if not incompatible:
+            return CheckResult(
+                name="Config consistency (Python version)",
+                passed=True,
+                message=f"Python {exact[0]}.{exact[1]} satisfies all declared ranges"
+            )
+
     normalized: dict[str, str] = {}
     for source, version in versions.items():
         match = re.search(r'(\d+\.\d+)', version)

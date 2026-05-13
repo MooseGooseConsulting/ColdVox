@@ -17,12 +17,28 @@ Set-StrictMode -Version Latest
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Timestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $ArtifactRoot = Join-Path $RepoRoot "logs/windows-validation/$Timestamp-$($Mode.ToLowerInvariant())"
+$ComposeFile = Join-Path $RepoRoot 'ops/parakeet/docker-compose.yml'
 $ConfigPath = Join-Path $RepoRoot 'config/windows-parakeet.toml'
-$PluginConfigPath = Join-Path $ArtifactRoot 'plugins.json'
 $LogPath = Join-Path $RepoRoot 'logs/coldvox.log'
-$SmokeFeatureList = 'silero,text-injection-enigo'
-$LiveFeatureList = 'parakeet,silero,text-injection-enigo'
-$ParakeetDevice = if ($env:PARAKEET_DEVICE) { $env:PARAKEET_DEVICE } else { 'cuda' }
+$TestWavPath = Join-Path $RepoRoot 'crates/app/test_data/test_1.wav'
+$HealthUrl = 'http://localhost:5092/health'
+$TranscriptionsUrl = 'http://localhost:5092/v1/audio/transcriptions'
+$FeatureList = 'http-remote,text-injection-enigo'
+
+function Get-ParakeetHealthTimeoutSeconds {
+    $value = $env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS
+    $parsed = 0
+
+    if (-not [string]::IsNullOrWhiteSpace($value) -and [int]::TryParse($value, [ref]$parsed) -and $parsed -gt 0) {
+        return $parsed
+    }
+
+    180
+}
+
+$DefaultParakeetHealthTimeoutSeconds = Get-ParakeetHealthTimeoutSeconds
+$TranscriptionMaxTimeSeconds = 180
+$TranscriptionProcessTimeoutSeconds = 200
 
 function Write-Step {
     param([string]$Message)
@@ -34,11 +50,6 @@ function Write-Ok {
     Write-Host "OK: $Message" -ForegroundColor Green
 }
 
-function Write-Warn {
-    param([string]$Message)
-    Write-Host "WARN: $Message" -ForegroundColor Yellow
-}
-
 function Assert-Command {
     param([string]$Name)
 
@@ -47,156 +58,14 @@ function Assert-Command {
     }
 }
 
-function Add-UniqueCandidate {
-    param(
-        [System.Collections.Generic.List[string]]$Candidates,
-        [string]$Path
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($Path) -and -not $Candidates.Contains($Path)) {
-        $Candidates.Add($Path)
-    }
-}
-
-function Resolve-HuggingFaceSnapshotDirs {
-    param(
-        [string]$HubRoot,
-        [string]$ModelName
-    )
-
-    $repoDir = Join-Path $HubRoot ("models--" + ($ModelName -replace '/', '--'))
-    $snapshotsDir = Join-Path $repoDir 'snapshots'
-
-    if (-not (Test-Path $snapshotsDir)) {
-        return @()
-    }
-
-    return Get-ChildItem $snapshotsDir -Directory |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -ExpandProperty FullName
-}
-
-function Get-HuggingFaceHubRoots {
-    $roots = New-Object 'System.Collections.Generic.List[string]'
-
-    foreach ($path in @(
-        $env:HF_HUB_CACHE,
-        $env:HUGGINGFACE_HUB_CACHE
-    )) {
-        Add-UniqueCandidate $roots $path
-    }
-
-    if ($env:HF_HOME) {
-        Add-UniqueCandidate $roots (Join-Path $env:HF_HOME 'hub')
-    }
-
-    if ($env:XDG_CACHE_HOME) {
-        Add-UniqueCandidate $roots (Join-Path $env:XDG_CACHE_HOME 'huggingface\hub')
-    }
-
-    foreach ($homeRoot in @($HOME, $env:USERPROFILE)) {
-        if (-not [string]::IsNullOrWhiteSpace($homeRoot)) {
-            Add-UniqueCandidate $roots (Join-Path $homeRoot '.cache\huggingface\hub')
-        }
-    }
-
-    if ($env:LOCALAPPDATA) {
-        Add-UniqueCandidate $roots (Join-Path $env:LOCALAPPDATA 'huggingface\hub')
-    }
-
-    foreach ($sharedRoot in @(
-        'D:\AIModels\hf\.cache\hub',
-        'D:\AIModels\hf\.hf_home\hub'
-    )) {
-        Add-UniqueCandidate $roots $sharedRoot
-    }
-
-    return $roots
-}
-
-function Get-ParakeetModelCandidates {
-    $variant = if ($env:PARAKEET_VARIANT) { $env:PARAKEET_VARIANT.ToLowerInvariant() } else { 'tdt' }
-    $modelName = switch ($variant) {
-        'ctc' { 'nvidia/parakeet-ctc-1.1b' }
-        default { 'nvidia/parakeet-tdt-1.1b' }
-    }
-
-    $candidates = New-Object 'System.Collections.Generic.List[string]'
-
-    Add-UniqueCandidate $candidates $env:PARAKEET_MODEL_PATH
-    Add-UniqueCandidate $candidates (Join-Path (Join-Path $env:LOCALAPPDATA 'parakeet') $modelName)
-
-    $leafName = Split-Path $modelName -Leaf
-    foreach ($root in @(
-        'D:\AIModels\speech\stt',
-        'D:\AIModels\speech'
-    )) {
-        Add-UniqueCandidate $candidates (Join-Path $root ($modelName -replace '/', '\'))
-        Add-UniqueCandidate $candidates (Join-Path $root $leafName)
-    }
-
-    foreach ($hubRoot in Get-HuggingFaceHubRoots) {
-        foreach ($snapshotDir in Resolve-HuggingFaceSnapshotDirs -HubRoot $hubRoot -ModelName $modelName) {
-            Add-UniqueCandidate $candidates $snapshotDir
-        }
-    }
-
-    return $candidates
-}
-
-function Resolve-ParakeetModelPath {
-    if ($env:PARAKEET_MODEL_PATH) {
-        if (-not (Test-Path $env:PARAKEET_MODEL_PATH)) {
-            throw "PARAKEET_MODEL_PATH does not exist: $($env:PARAKEET_MODEL_PATH)"
-        }
-
-        return $env:PARAKEET_MODEL_PATH
-    }
-
-    foreach ($candidate in Get-ParakeetModelCandidates) {
-        if (Test-Path $candidate) {
-            $env:PARAKEET_MODEL_PATH = $candidate
-            return $candidate
-        }
-    }
-
-    throw 'Parakeet model not found. Checked PARAKEET_MODEL_PATH, the local parakeet cache, D:\AIModels shared speech roots, and standard Hugging Face caches. Set PARAKEET_MODEL_PATH explicitly if your model lives elsewhere.'
-}
-
 function New-ArtifactDirectories {
     New-Item -ItemType Directory -Force -Path $ArtifactRoot | Out-Null
-}
-
-function Write-PluginConfig {
-    $pluginConfig = @{
-        preferred_plugin = 'parakeet'
-        fallback_plugins = @()
-        require_local = $true
-        max_memory_mb = $null
-        required_language = 'en'
-        failover = @{
-            failover_threshold = 5
-            failover_cooldown_secs = 10
-        }
-        gc_policy = @{
-            model_ttl_secs = 300
-            enabled = $true
-        }
-        metrics = @{
-            log_interval_secs = 30
-            debug_dump_events = $false
-        }
-        auto_extract_model = $true
-    }
-
-    $pluginConfig | ConvertTo-Json -Depth 8 | Set-Content -Path $PluginConfigPath -Encoding UTF8
 }
 
 function Invoke-LoggedProcess {
     param(
         [string]$Name,
         [string]$FilePath,
-        [string]$WorkingDirectory,
         [string[]]$ArgumentList,
         [int]$TimeoutSeconds = 0
     )
@@ -205,13 +74,27 @@ function Invoke-LoggedProcess {
     $stderr = Join-Path $ArtifactRoot "$Name.stderr.log"
 
     Write-Step $Name
-    $process = Start-Process `
-        -FilePath $FilePath `
-        -ArgumentList $ArgumentList `
-        -WorkingDirectory $WorkingDirectory `
-        -RedirectStandardOutput $stdout `
-        -RedirectStandardError $stderr `
-        -PassThru
+    # Use ProcessStartInfo.ArgumentList (not Start-Process -ArgumentList) so arguments
+    # containing spaces (e.g., $RepoRoot-derived paths) are quoted correctly.
+    # See PowerShell/PowerShell#5576 for the Start-Process -ArgumentList quoting gap.
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $FilePath
+    $startInfo.WorkingDirectory = $RepoRoot
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    if ($null -ne $ArgumentList) {
+        foreach ($arg in $ArgumentList) {
+            $startInfo.ArgumentList.Add([string]$arg)
+        }
+    }
+
+    $process = [System.Diagnostics.Process]@{ StartInfo = $startInfo }
+    [void]$process.Start()
+
+    # Drain stdout/stderr asynchronously to avoid deadlock when either buffer fills.
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
 
     $timedOut = $false
     if ($TimeoutSeconds -gt 0) {
@@ -223,7 +106,6 @@ function Invoke-LoggedProcess {
 
         if (-not $process.HasExited) {
             $timedOut = $true
-            Write-Warn "Timeout reached after $TimeoutSeconds seconds; stopping process tree"
             & taskkill.exe /PID $process.Id /T /F | Out-Null
             $process.WaitForExit()
         }
@@ -231,15 +113,10 @@ function Invoke-LoggedProcess {
         $process.WaitForExit()
     }
 
-    if ($process.ExitCode -ne 0 -and -not $timedOut) {
-        if (Test-Path $stderr) {
-            Write-Host ""
-            Write-Host "stderr tail:" -ForegroundColor Yellow
-            Get-Content $stderr | Select-Object -Last $TailLines | ForEach-Object { Write-Host $_ }
-        }
-
-        throw "Command '$Name' failed with exit code $($process.ExitCode)."
-    }
+    $stdoutContent = $stdoutTask.GetAwaiter().GetResult()
+    $stderrContent = $stderrTask.GetAwaiter().GetResult()
+    Set-Content -Path $stdout -Value $stdoutContent -NoNewline -Encoding UTF8
+    Set-Content -Path $stderr -Value $stderrContent -NoNewline -Encoding UTF8
 
     foreach ($path in @($stdout, $stderr)) {
         if (Test-Path $path) {
@@ -252,12 +129,39 @@ function Invoke-LoggedProcess {
         }
     }
 
+    if ($process.ExitCode -ne 0 -and -not $timedOut) {
+        throw "Command '$Name' failed with exit code $($process.ExitCode)."
+    }
+
     [pscustomobject]@{
         ExitCode = $process.ExitCode
         TimedOut = $timedOut
         StdoutPath = $stdout
         StderrPath = $stderr
     }
+}
+
+function Wait-ParakeetHealth {
+    param(
+        [int]$TimeoutSeconds = $DefaultParakeetHealthTimeoutSeconds
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $response = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 5
+            if ($response.status -eq 'ok') {
+                return
+            }
+        } catch {
+            Start-Sleep -Seconds 2
+            continue
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    throw "Parakeet HTTP container did not become healthy at $HealthUrl within $TimeoutSeconds seconds."
 }
 
 function Copy-RuntimeLog {
@@ -272,130 +176,110 @@ function Copy-RuntimeLog {
     Get-Content $LogPath | Select-Object -Last 120 | Set-Content (Join-Path $ArtifactRoot 'coldvox.log.tail') -Encoding UTF8
 }
 
-Assert-Command 'cargo'
-Assert-Command 'taskkill.exe'
-Assert-Command 'pwsh'
-
-if (-not $IsWindows) {
-    throw 'This validation wrapper only runs on Windows.'
-}
-
-if (-not (Test-Path $ConfigPath)) {
-    throw "Missing Windows live profile: $ConfigPath"
-}
-
 function Invoke-Preflight {
-    param(
-        [switch]$RequireModel
-    )
-
     Write-Step 'preflight'
     New-ArtifactDirectories
-    Write-PluginConfig
 
-    $gpuNames = Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name
-    $hasNvidia = [bool]($gpuNames | Where-Object { $_ -match 'NVIDIA' })
-    $hasNvidiaSmi = [bool](Get-Command nvidia-smi -ErrorAction SilentlyContinue)
-
-    if (-not $hasNvidia -and -not $hasNvidiaSmi) {
-        throw 'No NVIDIA/CUDA indicator found. This validation expects an NVIDIA GPU or nvidia-smi on PATH.'
+    foreach ($command in @('cargo', 'curl.exe', 'docker', 'pwsh', 'taskkill.exe')) {
+        Assert-Command $command
     }
 
-    if (-not $hasNvidiaSmi) {
-        throw 'nvidia-smi is not available on PATH. This validation requires NVIDIA driver tooling with nvidia-smi accessible so Parakeet GPU initialization can be validated.'
+    if (-not $IsWindows) {
+        throw 'This validation wrapper only runs on Windows.'
     }
 
-    Write-Step 'nvidia-smi'
-    $nvidia = Invoke-LoggedProcess -Name 'nvidia-smi' -FilePath 'nvidia-smi' -WorkingDirectory $RepoRoot -ArgumentList @('-L')
+    if (-not (Test-Path $ComposeFile)) {
+        throw "Missing compose file: $ComposeFile"
+    }
 
-    $modelPath = $null
-    try {
-        $modelPath = Resolve-ParakeetModelPath
-        Write-Ok "Using Parakeet model at $modelPath"
-    } catch {
-        if ($RequireModel) {
-            throw
-        }
+    if (-not (Test-Path $ConfigPath)) {
+        throw "Missing Windows HTTP remote override: $ConfigPath"
+    }
 
-        Write-Warn $_.Exception.Message
+    if (-not (Test-Path $TestWavPath)) {
+        throw "Missing test WAV file: $TestWavPath"
+    }
+
+    Invoke-LoggedProcess -Name 'docker-ps' -FilePath 'docker' -ArgumentList @('ps') | Out-Null
+    Invoke-LoggedProcess -Name 'parakeet-up' -FilePath 'docker' -ArgumentList @('compose', '-f', $ComposeFile, 'up', '-d', 'parakeet-cpu') | Out-Null
+
+    Write-Step 'parakeet-health'
+    Wait-ParakeetHealth
+    Write-Ok 'Parakeet CPU container is healthy'
+
+    $health = Invoke-LoggedProcess -Name 'parakeet-health-http' -FilePath 'curl.exe' -ArgumentList @('-sS', $HealthUrl)
+    $healthBody = Get-Content $health.StdoutPath -Raw
+    if ($healthBody -notmatch '"status"\s*:\s*"ok"') {
+        throw "Unexpected health response: $healthBody"
+    }
+
+    $transcription = Invoke-LoggedProcess -Name 'parakeet-transcription-http' -FilePath 'curl.exe' -ArgumentList @(
+        '-sS',
+        '--fail-with-body',
+        '--max-time', [string]$TranscriptionMaxTimeSeconds,
+        '-X', 'POST',
+        $TranscriptionsUrl,
+        '-F', "file=@$TestWavPath",
+        '-F', 'model=parakeet-tdt-0.6b-v2',
+        '-F', 'response_format=json'
+    ) -TimeoutSeconds $TranscriptionProcessTimeoutSeconds
+    $transcriptionBody = Get-Content $transcription.StdoutPath -Raw
+    if ($transcriptionBody -notmatch '"text"\s*:') {
+        throw "Unexpected transcription response: $transcriptionBody"
     }
 
     [pscustomobject]@{
-        GpuNames = $gpuNames
-        HasNvidiaSmi = $hasNvidiaSmi
-        ModelPath = $modelPath
+        HealthBody = $healthBody.Trim()
+        TranscriptionBody = $transcriptionBody.Trim()
     }
+}
+
+function Set-RunEnvironment {
+    $env:RUST_LOG = 'info'
+    $env:COLDVOX_LOG_RETENTION_DAYS = '0'
+    $env:COLDVOX_CONFIG_PATH = $ConfigPath
 }
 
 function Invoke-Smoke {
     $preflight = Invoke-Preflight
+    Set-RunEnvironment
 
-    $env:RUST_LOG = 'info'
-    $env:COLDVOX_LOG_RETENTION_DAYS = '0'
-    $env:COLDVOX_CONFIG_PATH = $ConfigPath
-    $env:COLDVOX_PLUGIN_CONFIG_PATH = $PluginConfigPath
-    $env:PARAKEET_DEVICE = $ParakeetDevice
-
-    Write-Step 'coldvox-help'
-    $help = Invoke-LoggedProcess `
-        -Name 'coldvox-help' `
-        -FilePath 'cargo' `
-        -WorkingDirectory $RepoRoot `
-        -ArgumentList @(
-            'run',
-            '-p', 'coldvox-app',
-            '--bin', 'coldvox',
-            '--no-default-features',
-            '--features', $SmokeFeatureList,
-            '--quiet',
-            '--',
-            '--help'
-        )
-
+    $help = Invoke-LoggedProcess -Name 'coldvox-help' -FilePath 'cargo' -ArgumentList @(
+        'run',
+        '-p', 'coldvox-app',
+        '--bin', 'coldvox',
+        '--features', $FeatureList,
+        '--quiet',
+        '--locked',
+        '--',
+        '--help'
+    )
     if ($help.ExitCode -ne 0) {
         throw "coldvox --help failed with exit code $($help.ExitCode)."
     }
 
-    Write-Ok 'coldvox --help passed'
-
-    Write-Step 'coldvox-list-devices'
-    $devices = Invoke-LoggedProcess `
-        -Name 'coldvox-list-devices' `
-        -FilePath 'cargo' `
-        -WorkingDirectory $RepoRoot `
-        -ArgumentList @(
-            'run',
-            '-p', 'coldvox-app',
-            '--bin', 'coldvox',
-            '--no-default-features',
-            '--features', $SmokeFeatureList,
-            '--quiet',
-            '--',
-            '--list-devices'
-        )
-
+    $devices = Invoke-LoggedProcess -Name 'coldvox-list-devices' -FilePath 'cargo' -ArgumentList @(
+        'run',
+        '-p', 'coldvox-app',
+        '--bin', 'coldvox',
+        '--features', $FeatureList,
+        '--quiet',
+        '--locked',
+        '--',
+        '--list-devices'
+    )
     if ($devices.ExitCode -ne 0) {
         throw "coldvox --list-devices failed with exit code $($devices.ExitCode)."
     }
 
-    Write-Ok 'coldvox --list-devices passed'
-
-    Write-Step 'coldvox-gui-smoke'
-    $gui = Invoke-LoggedProcess `
-        -Name 'coldvox-gui-smoke' `
-        -FilePath 'cargo' `
-        -WorkingDirectory $RepoRoot `
-        -ArgumentList @(
-            'run',
-            '-p', 'coldvox-gui',
-            '--quiet'
-        )
-
+    $gui = Invoke-LoggedProcess -Name 'coldvox-gui-smoke' -FilePath 'cargo' -ArgumentList @(
+        'run',
+        '-p', 'coldvox-gui',
+        '--quiet'
+    )
     if ($gui.ExitCode -ne 0) {
         throw "coldvox-gui smoke failed with exit code $($gui.ExitCode)."
     }
-
-    Write-Ok 'coldvox-gui smoke passed'
 
     [pscustomobject]@{
         Preflight = $preflight
@@ -407,47 +291,26 @@ function Invoke-Smoke {
 
 function Invoke-Live {
     $smoke = Invoke-Smoke
+    Set-RunEnvironment
 
-    $modelPath = Resolve-ParakeetModelPath
+    Invoke-LoggedProcess -Name 'coldvox-build' -FilePath 'cargo' -ArgumentList @(
+        'build',
+        '-p', 'coldvox-app',
+        '--bin', 'coldvox',
+        '--features', $FeatureList,
+        '--quiet',
+        '--locked'
+    ) | Out-Null
 
-    $env:RUST_LOG = 'info'
-    $env:COLDVOX_LOG_RETENTION_DAYS = '0'
-    $env:COLDVOX_CONFIG_PATH = $ConfigPath
-    $env:COLDVOX_PLUGIN_CONFIG_PATH = $PluginConfigPath
-    $env:PARAKEET_DEVICE = $ParakeetDevice
-    $env:PARAKEET_MODEL_PATH = $modelPath
-
-    Write-Step 'coldvox-build'
-    $build = Invoke-LoggedProcess `
-        -Name 'coldvox-build' `
-        -FilePath 'cargo' `
-        -WorkingDirectory $RepoRoot `
-        -ArgumentList @(
-            'build',
+    try {
+        $live = Invoke-LoggedProcess -Name 'coldvox-live' -FilePath 'cargo' -ArgumentList @(
+            'run',
             '-p', 'coldvox-app',
             '--bin', 'coldvox',
-            '--no-default-features',
-            '--features', $LiveFeatureList,
+            '--features', $FeatureList,
             '--quiet',
             '--locked'
-        )
-
-    Write-Step 'coldvox-live'
-    try {
-        $live = Invoke-LoggedProcess `
-            -Name 'coldvox-live' `
-            -FilePath 'cargo' `
-            -WorkingDirectory $RepoRoot `
-            -ArgumentList @(
-                'run',
-                '-p', 'coldvox-app',
-                '--bin', 'coldvox',
-                '--no-default-features',
-                '--features', $LiveFeatureList,
-                '--quiet',
-                '--locked'
-            ) `
-            -TimeoutSeconds $RuntimeSeconds
+        ) -TimeoutSeconds $RuntimeSeconds
     } finally {
         Copy-RuntimeLog
     }
@@ -456,23 +319,18 @@ function Invoke-Live {
         throw "Live runtime exited early with code $($live.ExitCode)."
     }
 
-    if (-not (Test-Path $LogPath)) {
-        throw 'Live runtime did not produce a runtime log.'
-    }
-
     @(
-        "ColdVox Windows live validation"
+        'ColdVox Windows HTTP remote validation'
         "Timestamp: $Timestamp"
         "Repo root: $RepoRoot"
         "Artifact root: $ArtifactRoot"
+        "Compose file: $ComposeFile"
         "Config path: $ConfigPath"
-        "Plugin config path: $PluginConfigPath"
-        "Smoke features: $SmokeFeatureList"
-        "Live features: $LiveFeatureList"
-        "PARAKEET_DEVICE: $ParakeetDevice"
-        "PARAKEET_MODEL_PATH: $modelPath"
-        "GPU names: $($smoke.Preflight.GpuNames -join ', ')"
-        "nvidia-smi present: $($smoke.Preflight.HasNvidiaSmi)"
+        "Health URL: $HealthUrl"
+        "Transcriptions URL: $TranscriptionsUrl"
+        "Features: $FeatureList"
+        "Preflight health response: $($smoke.Preflight.HealthBody)"
+        "Preflight transcription response: $($smoke.Preflight.TranscriptionBody)"
         "help exit code: $($smoke.Help.ExitCode)"
         "list-devices exit code: $($smoke.Devices.ExitCode)"
         "gui smoke exit code: $($smoke.Gui.ExitCode)"
@@ -486,7 +344,7 @@ function Invoke-Live {
 }
 
 switch ($Mode) {
-    'Preflight' { Invoke-Preflight -RequireModel | Out-Null }
+    'Preflight' { Invoke-Preflight | Out-Null }
     'Smoke' { Invoke-Smoke | Out-Null }
     'Live' { Invoke-Live | Out-Null }
 }

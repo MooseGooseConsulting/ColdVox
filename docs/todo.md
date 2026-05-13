@@ -12,7 +12,7 @@ version: 1.0.0
 # Documentation Todo Backlog
 
 ## Epic: Test OS Scoping (High Priority)
-- [ ] Scope text-injection integration tests to fix `cargo test` failures on Windows. ([plan](./plans/current-status.md))
+- [x] Scope text-injection integration tests to fix `cargo test` failures on Windows. ([plan](./plans/current-status.md))
 
 ## Epic: Documentation Migration
 

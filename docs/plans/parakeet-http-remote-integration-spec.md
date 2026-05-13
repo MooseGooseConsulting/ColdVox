@@ -1,3 +1,13 @@
+---
+doc_type: plan
+subsystem: stt
+status: draft
+last_reviewed: 2026-05-13
+freshness: current
+preservation: preserve
+summary: "Execution spec for hardening the Parakeet HTTP-remote STT integration path."
+signals: ['stt', 'parakeet', 'http-remote', 'integration']
+---
 # Parakeet HTTP Remote Integration Spec
 
 ## Status

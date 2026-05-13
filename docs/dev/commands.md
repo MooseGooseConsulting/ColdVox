@@ -1,3 +1,13 @@
+---
+doc_type: reference
+subsystem: developer-workflow
+status: active
+last_reviewed: 2026-05-13
+freshness: current
+preservation: preserve
+summary: "Developer command reference for common ColdVox build, test, and run commands."
+signals: ['commands', 'developer-workflow', 'validation']
+---
 # Build Commands
 
 ## File-scoped (preferred)

@@ -1,3 +1,13 @@
+---
+doc_type: research
+subsystem: dependencies
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived dependency audit report from 2025-02-09."
+signals: ['dependencies', 'audit', 'archive']
+---
 # Dependency Audit Report - 2025-02-09
 
 ## Summary of Findings

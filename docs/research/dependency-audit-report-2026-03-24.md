@@ -1,3 +1,13 @@
+---
+doc_type: research
+subsystem: dependencies
+status: complete
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Dependency audit report captured on 2026-03-24."
+signals: ['dependencies', 'audit', 'rust', 'python']
+---
 # Dependency Audit Report – ColdVox (2026‑03‑24)
 
 ## 1. Summary of Findings

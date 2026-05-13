@@ -62,7 +62,6 @@ linux-desktop = ["atspi", "wl_clipboard", "kdotool"]
 desktop = ["linux-desktop", "enigo"] # "Batteries-included" feature for most users
 
 # Test features
-live-hardware-tests = []
 real-injection-tests = []
 
 # Deprecated alias for xdg_kdotool. Will be removed in a future version.

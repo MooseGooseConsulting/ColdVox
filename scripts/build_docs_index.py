@@ -83,7 +83,10 @@ def classify_doc(metadata: Dict, err: str, path: Path) -> Tuple[str, str, str]:
 def collect_docs() -> List[Tuple[Path, Dict, str, str, str]]:
     """Returns list of (path, metadata, freshness, preservation, note)."""
     docs: List[Tuple[Path, Dict, str, str, str]] = []
-    for path in sorted(DOCS_ROOT.rglob("*.md")):
+    # Sort by POSIX string so ordering is deterministic across platforms.
+    # Path comparison on Windows is case-insensitive, which produces a
+    # different order than the Linux-based docs-ci regenerator.
+    for path in sorted(DOCS_ROOT.rglob("*.md"), key=lambda p: p.as_posix()):
         if path == INDEX_PATH:
             continue
         metadata, err = parse_frontmatter(path)
