@@ -158,6 +158,7 @@ function Wait-ParakeetHealth {
 
 function Copy-RuntimeLog {
     if (-not (Test-Path $LogPath)) {
+        Write-Warning "Runtime log not found at $LogPath."
         Set-Content (Join-Path $ArtifactRoot 'coldvox.log') -Value '' -Encoding UTF8
         Set-Content (Join-Path $ArtifactRoot 'coldvox.log.tail') -Value '' -Encoding UTF8
         return
