@@ -50,6 +50,13 @@ tmp/
 temp/
 *.tmp
 .artifacts/
+
+# Kilocode editor state (local node_modules)
+.kilo/
+
+# Terminal session logs
+*.txt
+!README*.txt
 __pycache__/
 *.pyc
 
