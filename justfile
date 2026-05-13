@@ -111,5 +111,5 @@ tui:
     cargo run -p coldvox-app --bin tui_dashboard --features http-remote,text-injection
 
 # Run mic probe utility
-mic-probe duration="30":
-    cd crates/app && cargo run --bin mic_probe -- --duration {{duration}}
+mic-probe duration="30" command="mic-capture":
+    cargo run -p coldvox-app --bin mic_probe -- {{command}} --duration {{duration}}
