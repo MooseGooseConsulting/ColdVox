@@ -1,3 +1,13 @@
+---
+doc_type: summary
+subsystem: windows
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived implementation summary for Windows voice capture and GUI work."
+signals: ['windows', 'capture', 'gui', 'archive']
+---
 # ColdVox Windows Voice Capture & GUI - Implementation Summary
 
 ## Status: CORE FIXES COMPLETE ✅

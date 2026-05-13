@@ -7,11 +7,19 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $ComposeFile = Join-Path $RepoRoot 'ops/parakeet/docker-compose.yml'
 $ConfigPath = Join-Path $RepoRoot 'config/windows-parakeet.toml'
 $HealthUrl = 'http://localhost:5092/health'
-$DefaultParakeetHealthTimeoutSeconds = if ($env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS) {
-    [int]$env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS
-} else {
+
+function Get-ParakeetHealthTimeoutSeconds {
+    $value = $env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS
+    $parsed = 0
+
+    if (-not [string]::IsNullOrWhiteSpace($value) -and [int]::TryParse($value, [ref]$parsed) -and $parsed -gt 0) {
+        return $parsed
+    }
+
     180
 }
+
+$DefaultParakeetHealthTimeoutSeconds = Get-ParakeetHealthTimeoutSeconds
 
 function Wait-ParakeetHealth {
     param(

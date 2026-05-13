@@ -1,3 +1,13 @@
+---
+doc_type: report
+subsystem: windows
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived verification report for earlier Windows implementation work."
+signals: ['windows', 'verification', 'archive']
+---
 # ColdVox Windows Implementation - VERIFICATION REPORT
 
 ## Executive Summary

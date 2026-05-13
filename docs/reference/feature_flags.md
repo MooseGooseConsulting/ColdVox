@@ -1,3 +1,13 @@
+---
+doc_type: reference
+subsystem: configuration
+status: active
+last_reviewed: 2026-05-13
+freshness: current
+preservation: preserve
+summary: "Reference for ColdVox compile-time feature flags and hardware configuration choices."
+signals: ['features', 'configuration', 'hardware']
+---
 # Feature Flags & Hardware Configuration
 
 ColdVox uses a combination of compile-time feature flags and runtime configuration to adapt to different hardware environments.

@@ -1,3 +1,13 @@
+---
+doc_type: session
+subsystem: windows
+status: complete
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Session log for Windows stability and pipeline recovery work on 2026-03-25."
+signals: ['windows', 'session', 'stability', 'recovery']
+---
 # Session Log: Windows Stability & Pipeline Recovery (2026-03-25)
 
 ## Objective

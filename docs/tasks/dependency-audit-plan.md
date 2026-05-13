@@ -1,3 +1,13 @@
+---
+doc_type: task-plan
+subsystem: dependencies
+status: active
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Methodology for conducting a rigorous dependency audit."
+signals: ['dependencies', 'audit', 'task-plan']
+---
 # Rigorous Dependency Audit Methodology
 
 **Objective:** Execute an exhaustive, package-by-package engineering audit of every direct and critical transitive dependency in the ColdVox project. This is not an automated scan; it is a manual, architectural investigation into the version delta, compatibility matrix, and integration health of our dependencies across Rust, Python, and System levels.

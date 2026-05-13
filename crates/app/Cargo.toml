@@ -118,7 +118,6 @@ http-remote = ["coldvox-stt/http-remote"]
 silero = ["coldvox-vad-silero/silero"]     # ✅ Default: Silero VAD
 text-injection = ["dep:coldvox-text-injection"]  # ✅ Default: Text injection backends
 live-hardware-tests = []
-examples = []
 sleep-observer = []
 tui = []
 

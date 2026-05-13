@@ -1,3 +1,13 @@
+---
+doc_type: status
+subsystem: windows
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived final status for earlier Windows implementation work."
+signals: ['windows', 'archive', 'status']
+---
 # FINAL STATUS: ColdVox Windows Implementation
 
 ## What I Successfully Completed ✅

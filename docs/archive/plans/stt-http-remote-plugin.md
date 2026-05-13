@@ -1,5 +1,6 @@
 ---
 doc_type: plan
+subsystem: stt
 status: proposed
 created: 2026-03-25
 author: claude

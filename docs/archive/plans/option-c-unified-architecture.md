@@ -1,3 +1,13 @@
+---
+doc_type: plan
+subsystem: architecture
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived proposal for a unified ColdVox architecture."
+signals: ['architecture', 'archive', 'proposal']
+---
 # Option C: Unified ColdVox Architecture
 
 > **Status**: PROPOSAL (2026-03-24)

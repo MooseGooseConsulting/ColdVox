@@ -1,3 +1,13 @@
+---
+doc_type: plan
+subsystem: dependencies
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived PyO3 dependency audit plan."
+signals: ['pyo3', 'dependencies', 'archive']
+---
 # PyO3 Dependency Audit Plan for ColdVox
 
 ## Overview

@@ -1,3 +1,13 @@
+---
+doc_type: standard
+subsystem: agent-workflow
+status: active
+last_reviewed: 2026-05-13
+freshness: current
+preservation: preserve
+summary: "Working rules for agent activity in the ColdVox repository."
+signals: ['agents', 'standards', 'workflow']
+---
 # Working Rules
 
 ## DO

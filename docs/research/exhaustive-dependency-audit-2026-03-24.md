@@ -1,3 +1,13 @@
+---
+doc_type: research
+subsystem: dependencies
+status: complete
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Exhaustive dependency audit notes captured on 2026-03-24."
+signals: ['dependencies', 'audit', 'rust', 'python']
+---
 # Exhaustive Dependency Audit – ColdVox (2026‑03‑24)
 
 **Report file:** [`exhaustive-dependency-audit-2026-03-24.md`](docs/research/exhaustive-dependency-audit-2026-03-24.md:1)

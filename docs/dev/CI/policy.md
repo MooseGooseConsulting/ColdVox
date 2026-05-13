@@ -1,3 +1,13 @@
+---
+doc_type: policy
+subsystem: ci
+status: active
+last_reviewed: 2026-05-13
+freshness: current
+preservation: preserve
+summary: "CI environment policy for hosted and self-hosted ColdVox runners."
+signals: ['ci', 'policy', 'runners']
+---
 # CI Environment
 
 Canonical CI policy is `docs/dev/CI/architecture.md`.

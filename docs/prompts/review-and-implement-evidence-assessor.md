@@ -1,3 +1,13 @@
+---
+doc_type: prompt
+subsystem: ci
+status: draft
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Prompt for reviewing and implementing an agentic evidence assessor."
+signals: ['prompt', 'ci', 'agent-review', 'evidence']
+---
 # Meta-Prompt: Review, Critique, and Implement the Agentic Evidence Assessor
 
 **Instructions for the User:** 

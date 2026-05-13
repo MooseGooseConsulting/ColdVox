@@ -24,11 +24,19 @@ $TestWavPath = Join-Path $RepoRoot 'crates/app/test_data/test_1.wav'
 $HealthUrl = 'http://localhost:5092/health'
 $TranscriptionsUrl = 'http://localhost:5092/v1/audio/transcriptions'
 $FeatureList = 'http-remote,text-injection-enigo'
-$DefaultParakeetHealthTimeoutSeconds = if ($env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS) {
-    [int]$env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS
-} else {
+
+function Get-ParakeetHealthTimeoutSeconds {
+    $value = $env:COLDVOX_PARAKEET_HEALTH_TIMEOUT_SECONDS
+    $parsed = 0
+
+    if (-not [string]::IsNullOrWhiteSpace($value) -and [int]::TryParse($value, [ref]$parsed) -and $parsed -gt 0) {
+        return $parsed
+    }
+
     180
 }
+
+$DefaultParakeetHealthTimeoutSeconds = Get-ParakeetHealthTimeoutSeconds
 $TranscriptionMaxTimeSeconds = 180
 $TranscriptionProcessTimeoutSeconds = 200
 

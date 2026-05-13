@@ -1,110 +1,60 @@
 # AGENTS.md
 
-Canonical AI agent instructions for ColdVox. This file is the source of truth for all agent tools.
+Canonical agent entrypoint for ColdVox.
 
-## Anchor
+## Read First
 
-- Product and technical anchor: `docs/northstar.md`
-- Current execution state: `docs/plans/current-status.md`
-- Architecture direction: `docs/architecture.md`
-- CI source of truth: `docs/dev/CI/architecture.md`
+1. [docs/index.md](docs/index.md)
+2. [docs/windows-live-runbook.md](docs/windows-live-runbook.md)
+3. [docs/reference/crates/app.md](docs/reference/crates/app.md)
+4. [docs/domains/foundation/fdn-testing-guide.md](docs/domains/foundation/fdn-testing-guide.md)
+5. [README.md](README.md) for high-level project context only
 
-If guidance conflicts, use this precedence:
-1. `docs/northstar.md`
-2. `docs/plans/current-status.md`
-3. `docs/dev/CI/architecture.md`
+For substantial work, read the relevant crate reference under [docs/reference/crates](docs/reference/crates) and the matching domain docs under [docs/domains](docs/domains).
 
-## Current Product Direction & Reality
+## Precedence
 
-- **Target OS:** Windows 11 priority.
-- **Python Environment:** Exclusively managed by `uv`. Do NOT use `mise` or raw `pip` for Python packages. Ensure `.python-version` is respected.
-- **STT Backend:**
-  - **Moonshine:** The current working backend, but considered a fragile dependency due to PyO3.
-  - **Parakeet:** The designated successor for a pure-Rust/Windows-native STT pipeline (CUDA/DirectML). It *does* compile; focus on runtime validation.
-  - **Vaporware:** The `whisper`, `coqui`, `leopard`, and `silero-stt` feature flags are dead stubs. Do not attempt to use them.
+When guidance conflicts, use this order:
 
-## Project Overview
+1. Code and tests
+2. The task-specific crate/domain docs
+3. [docs/index.md](docs/index.md) and the docs it routes you to
+4. [README.md](README.md)
+5. This file
 
-ColdVox is a Rust voice pipeline: audio capture -> VAD -> STT -> text injection.
-Multi-crate Cargo workspace under `crates/`.
+[docs/architecture.md](docs/architecture.md) is useful for long-range context, but it is not the source of truth for current runtime behavior.
 
-Key crates to know:
-- `coldvox-app` (Main execution and binaries)
-- `coldvox-audio` (Capture and resampling via rubato)
-- `coldvox-stt` (STT Plugin logic)
-- `coldvox-text-injection` (Output injection logic)
+## Repo Truths
+
+- ColdVox is a Rust workspace for audio capture, VAD, STT routing, and text injection.
+- Windows is the priority environment.
+- `config/default.toml` is the checked-in startup config and currently defaults STT to `mock`.
+- `config/plugins.json` is plugin-manager persistence, not the primary startup config.
+- `crates/coldvox-gui` exists, but the GUI is still a stub/prototype path.
+- The canonical command surface lives in the root [justfile](justfile).
+- The canonical Windows-local validation path is `just windows-run-preflight`, `just windows-smoke`, `just windows-live`, and `just test` as documented in [docs/windows-live-runbook.md](docs/windows-live-runbook.md).
+- Prefer git worktrees for parallel work under `../.trees/coldvox-{branch-name}`.
 
 ## Working Rules
 
-**DO:**
-- Use `cargo {cmd} -p {crate}` for iteration speed, but finish with `cargo check --workspace --all-targets`.
-- Only use live testing (real microphone/`.wav` files) to test VAD and STT. Do not mock audio buffers.
-- Check `docs/plans/current-status.md` for what currently works and what's broken.
+- Prefer crate-scoped Rust commands for iteration; use workspace-wide commands only when needed.
+- Validate changes before claiming success. Start with the smallest relevant check, then widen only as needed.
+- Keep documentation changes thin and link-heavy; do not turn root agent docs into a second README.
+- Update [CHANGELOG.md](CHANGELOG.md) only for user-visible changes, following [docs/standards.md](docs/standards.md).
 
-**DO NOT:**
-- Claim Whisper or Parakeet are currently production-ready.
-- Modify Python dependencies without using `uv`.
-- Auto-run commands that destroy data or commit unverified changes.
+## Ask First
 
-## Commands
+- Force pushes, rebases that rewrite shared history, or branch deletion
+- Dependency changes
+- Destructive file cleanup outside the immediate task
+- Infra, release, or governance changes
 
-File-scoped (preferred):
-```bash
-cargo check -p coldvox-stt
-cargo clippy -p coldvox-audio
-cargo test -p coldvox-text-injection
-cargo fmt --all -- --check
-```
+## Useful Routes
 
-Workspace (when needed):
-```bash
-./scripts/local_ci.sh
-cargo clippy --workspace --all-targets --locked
-cargo test --workspace --locked
-cargo build --workspace --locked
-```
-
-Run:
-```bash
-cargo run -p coldvox-app --bin coldvox
-cargo run -p coldvox-app --bin tui_dashboard
-cargo run --features text-injection,moonshine
-```
-
-## Feature Flags
-
-- `silero`: Silero VAD
-- `text-injection`: text injection backends
-- `moonshine`: Current working STT backend (Python-based, CPU/GPU)
-- `parakeet`: planned backend work; not current reliable path
-- `examples`: example binaries
-- `live-hardware-tests`: hardware test suites
-
-## CI Environment
-
-Canonical CI policy is `docs/dev/CI/architecture.md`.
-
-Principle:
-- GitHub-hosted runners handle fast general CI work.
-- Self-hosted Fedora/Nobara runner handles hardware-dependent tests.
-
-Do not use:
-- Xvfb on self-hosted runner
-- `apt-get` on Fedora runner
-- `DISPLAY=:99` in self-hosted jobs
-
-## Key Files
-
-- Main entry: `crates/app/src/main.rs`
-- Audio capture: `crates/coldvox-audio/src/capture.rs`
-- VAD engine: `crates/coldvox-vad-silero/src/silero_wrapper.rs`
-- STT plugins: `crates/coldvox-stt/src/plugins/`
-- Text injection manager: `crates/coldvox-text-injection/src/manager.rs`
-- Build detection: `crates/app/build.rs`
-
-## PR Checklist
-
-- `./scripts/local_ci.sh` passes (or equivalent crate-scoped checks)
-- Docs updated for behavior/direction changes
-- `CHANGELOG.md` updated for user-visible changes
-- No secrets committed
+- Runtime/config behavior: [docs/reference/crates/app.md](docs/reference/crates/app.md)
+- Windows validation commands and artifact flow: [docs/windows-live-runbook.md](docs/windows-live-runbook.md)
+- Testing and current test reality: [docs/domains/foundation/fdn-testing-guide.md](docs/domains/foundation/fdn-testing-guide.md)
+- Documentation index: [docs/index.md](docs/index.md)
+- Documentation policy: [docs/standards.md](docs/standards.md)
+- Active documentation backlog: [docs/todo.md](docs/todo.md)
+- Longer-term plans and research: [docs/plans](docs/plans) and [docs/research](docs/research)

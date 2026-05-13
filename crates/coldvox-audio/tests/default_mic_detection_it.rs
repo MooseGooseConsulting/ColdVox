@@ -11,6 +11,8 @@
 //! - Runs only on Linux and requires `pactl` (PulseAudio/PipeWire compatibility layer)
 //! - If audio stack is unavailable, the test will skip gracefully
 
+#![cfg(target_os = "linux")]
+
 use coldvox_audio::{AudioCaptureThread, AudioRingBuffer};
 use coldvox_foundation::AudioConfig;
 use parking_lot::Mutex;

@@ -1,3 +1,13 @@
+---
+doc_type: issue
+subsystem: dependencies
+status: archived
+last_reviewed: 2026-05-13
+freshness: historical
+preservation: preserve
+summary: "Archived dependency audit action items from 2026-03-24."
+signals: ['dependencies', 'audit', 'archive']
+---
 # [Dependency Audit] Action items from exhaustive dependency audit (2026-03-24)
 
 ## Summary
