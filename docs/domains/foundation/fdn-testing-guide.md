@@ -14,7 +14,7 @@ version: 1.0.0
 
 ## Current Gate
 
-For this wave, the authoritative gate is local Windows validation. CI is not the gate.
+The authoritative gate for the Windows runtime path is local Windows validation. CI is supporting signal, not the release gate.
 
 On Windows, `just test` runs the required Windows-safe matrix. It does not call `cargo test --workspace --locked`, because the wider workspace still pulls in non-Windows members that are not a useful Windows correctness signal.
 
@@ -68,7 +68,7 @@ If the Parakeet model is missing, `just windows-run-preflight` and `just windows
 
 - The checked-in default config stays on `mock` so tests remain deterministic.
 - The Windows live path opts into `config/windows-parakeet.toml`.
-- `coldvox-gui` is only a stub smoke target for this wave.
+- `coldvox-gui` is only a stub smoke target; Tauri GUI work belongs on `tauri-base`.
 - The required matrix compiles `golden_master` with the real Windows feature
   set, but it does not treat that test as a required runtime signal yet because
   the fixture is not a reliable Parakeet-on-Windows validation path.

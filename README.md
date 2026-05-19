@@ -7,9 +7,9 @@ ColdVox is a Rust voice pipeline: audio capture -> VAD -> STT -> text injection.
 ## Current Reality
 
 - The checked-in default config stays deterministic and test-friendly: `config/default.toml` starts with the `mock` STT path.
-- The supported Windows live path for this wave is `parakeet` on NVIDIA/CUDA hardware.
-- The Windows GUI is not the shipped path for this wave. `cargo run -p coldvox-gui` is only a stub smoke check.
-- CI is not the gate for this wave. Local Windows validation is the gate.
+- The supported Windows live path is the local Parakeet HTTP container profile in `config/windows-parakeet.toml`.
+- The current `coldvox-gui` binary is only a stub smoke check; Tauri GUI work belongs on `tauri-base`.
+- Local Windows validation is the release gate for the Windows runtime path.
 
 ## Windows Live Path
 
