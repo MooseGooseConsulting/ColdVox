@@ -17,8 +17,8 @@ root_trunk_facts:
   landing_branch:
     name: codex/recovery-2026-05-19
     base: origin/tauri-base
-    head_at_capture: "0b4935a"
-    ahead_of_base_at_capture: 13
+    head_at_capture: "88dcd54"
+    ahead_of_base_at_capture: 15
     behind_base_at_capture: 0
   guardrails_observed:
     pushed: false
@@ -30,7 +30,7 @@ root_trunk_facts:
 worktrees_captured:
   - path: D:/_projects/ColdVox
     branch: codex/recovery-2026-05-19
-    head: "0b4935aead0da06de8ff5489578ff25dbe3900b3"
+    head: "88dcd54"
     status_at_capture: clean
   - path: D:/_projects/.trees/coldvox-final-corrections
     branch: codex/final-windows-corrections
@@ -80,6 +80,10 @@ dirty_worktree_preservation:
         message: "chore(parakeet): improve health check guidance"
       - sha: "0b4935a"
         message: "chore(parakeet): harden just helper invocation"
+      - sha: "15e09b2"
+        message: "docs(plan): record wave 1 worktree landing"
+      - sha: "88dcd54"
+        message: "ci: tighten workflow path filters"
   - worktree: D:/_projects/.trees/coldvox-windows-rampage
     branch: codex/restore-windows-e2e-validation
     method: commit
@@ -176,7 +180,7 @@ upstream_problem_branches_at_capture:
   divergent:
     - branch: codex/recovery-2026-05-19
       upstream: origin/tauri-base
-      ahead: 13
+      ahead: 15
       behind: 0
     - branch: feat/always-on-push-to-transcribe
       upstream: origin/feat/always-on-push-to-transcribe
