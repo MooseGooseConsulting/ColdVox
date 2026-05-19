@@ -5,6 +5,7 @@ use config::{Case, Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
@@ -128,7 +129,7 @@ pub struct SttSettings {
 impl Default for SttSettings {
     fn default() -> Self {
         Self {
-            preferred: Some("mock".to_string()),
+            preferred: None,
             fallbacks: Vec::new(),
             require_local: false,
             max_mem_mb: None,
@@ -184,10 +185,22 @@ impl Default for Settings {
 }
 
 impl Settings {
-    fn build_runtime_plugin_selection(stt: &SttSettings) -> PluginSelectionConfig {
+    fn build_runtime_plugin_selection_with_overrides(
+        stt: &SttSettings,
+        plugin_overrides: Option<&PluginSelectionConfig>,
+    ) -> PluginSelectionConfig {
         PluginSelectionConfig {
-            preferred_plugin: stt.preferred.clone(),
-            fallback_plugins: stt.fallbacks.clone(),
+            preferred_plugin: stt
+                .preferred
+                .clone()
+                .or_else(|| plugin_overrides.and_then(|cfg| cfg.preferred_plugin.clone())),
+            fallback_plugins: if stt.fallbacks.is_empty() {
+                plugin_overrides
+                    .map(|cfg| cfg.fallback_plugins.clone())
+                    .unwrap_or_default()
+            } else {
+                stt.fallbacks.clone()
+            },
             require_local: stt.require_local,
             max_memory_mb: stt.max_mem_mb,
             required_language: stt.language.clone(),
@@ -246,7 +259,7 @@ impl Settings {
             .set_default("injection.min_success_rate", 0.3)?
             .set_default("injection.min_sample_size", 5)?
             // STT settings defaults
-            .set_default("stt.preferred", "mock")?
+            .set_default("stt.preferred", Option::<String>::None)?
             .set_default("stt.fallbacks", Vec::<String>::new())?
             .set_default("stt.require_local", false)?
             .set_default("stt.max_mem_mb", Option::<u32>::None)?
@@ -377,7 +390,11 @@ impl Settings {
     }
 
     pub fn runtime_plugin_selection(&self) -> Result<PluginSelectionConfig, String> {
-        let selection = Self::build_runtime_plugin_selection(&self.stt);
+        let plugin_overrides = load_canonical_plugin_selection_config()?;
+        let selection = Self::build_runtime_plugin_selection_with_overrides(
+            &self.stt,
+            plugin_overrides.as_ref(),
+        );
         selection
             .validate_runtime_policy()
             .map_err(|err| err.to_string())?;
@@ -676,6 +693,32 @@ fn is_legacy_app_local_plugin_config_path(path: &Path) -> bool {
     )
 }
 
+pub(crate) fn load_canonical_plugin_selection_config(
+) -> Result<Option<PluginSelectionConfig>, String> {
+    let Some(path) = discover_plugin_selection_config_path() else {
+        return Ok(None);
+    };
+
+    let raw = fs::read_to_string(&path).map_err(|err| {
+        format!(
+            "Failed to read plugin selection config {}: {}",
+            path.display(),
+            err
+        )
+    })?;
+    let config: PluginSelectionConfig = serde_json::from_str(&raw).map_err(|err| {
+        format!(
+            "Failed to parse plugin selection config {}: {}",
+            path.display(),
+            err
+        )
+    })?;
+    config
+        .validate_runtime_policy()
+        .map_err(|err| err.to_string())?;
+    Ok(Some(config))
+}
+
 pub mod audio;
 pub mod clock;
 pub mod foundation;
@@ -697,52 +740,32 @@ pub mod test_utils;
 mod tests {
     use super::*;
     use serial_test::serial;
-    use std::ffi::OsString;
-    use std::fs;
-
-    struct EnvVarGuard {
-        key: &'static str,
-        previous: Option<OsString>,
-    }
-
-    impl EnvVarGuard {
-        fn remove(key: &'static str) -> Self {
-            let previous = env::var_os(key);
-            env::remove_var(key);
-            Self { key, previous }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            if let Some(previous) = self.previous.take() {
-                env::set_var(self.key, previous);
-            } else {
-                env::remove_var(self.key);
-            }
-        }
-    }
 
     #[test]
-    fn build_runtime_plugin_selection_uses_settings_config() {
+    fn build_runtime_plugin_selection_prefers_settings_config() {
         let stt = SttSettings {
             preferred: Some("mock".to_string()),
             fallbacks: vec!["mock".to_string()],
             ..Default::default()
         };
 
-        let selection = Settings::build_runtime_plugin_selection(&stt);
+        let selection = Settings::build_runtime_plugin_selection_with_overrides(
+            &stt,
+            Some(&PluginSelectionConfig {
+                preferred_plugin: Some("http-remote".to_string()),
+                fallback_plugins: vec![],
+                require_local: false,
+                max_memory_mb: None,
+                required_language: Some("en".to_string()),
+                failover: None,
+                gc_policy: None,
+                metrics: None,
+                auto_extract_model: true,
+            }),
+        );
 
         assert_eq!(selection.preferred_plugin.as_deref(), Some("mock"));
         assert_eq!(selection.fallback_plugins, vec!["mock"]);
-    }
-
-    #[test]
-    fn build_runtime_plugin_selection_defaults_to_mock() {
-        let selection = Settings::build_runtime_plugin_selection(&SttSettings::default());
-
-        assert_eq!(selection.preferred_plugin.as_deref(), Some("mock"));
-        assert!(selection.fallback_plugins.is_empty());
     }
 
     #[cfg(feature = "http-remote")]
@@ -791,15 +814,10 @@ mod tests {
     }
 
     #[test]
-    #[serial]
-    fn repo_root_plugins_json_is_persistence_not_startup_selector() {
+    fn repo_root_plugins_json_keeps_canonical_http_remote_profile() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let root_plugins_path = repo_root.join("config/plugins.json");
         let app_local_plugins_path = repo_root.join("crates/app/config/plugins.json");
-        let default_config_path = repo_root.join("config/default.toml");
-        let _plugin_guard = EnvVarGuard::remove("COLDVOX_PLUGIN_CONFIG_PATH");
-        let _config_guard = EnvVarGuard::remove("COLDVOX_CONFIG_PATH");
-        let _preferred_guard = EnvVarGuard::remove("COLDVOX__STT__PREFERRED");
 
         let raw =
             fs::read_to_string(&root_plugins_path).expect("read repo-root plugin selection config");
@@ -815,20 +833,13 @@ mod tests {
         assert_eq!(root_config.required_language.as_deref(), Some("en"));
         assert!(!root_config.require_local);
 
-        let settings = Settings::from_path(&default_config_path).expect("load default config");
-        assert_eq!(settings.stt.preferred.as_deref(), Some("mock"));
-        let selection = settings
-            .runtime_plugin_selection()
-            .expect("build runtime plugin selection");
-        assert_eq!(selection.preferred_plugin.as_deref(), Some("mock"));
-
         let resolved = discover_plugin_selection_config_path()
-            .expect("resolve plugin-manager persistence config path")
+            .expect("resolve canonical plugin selection config path")
             .canonicalize()
-            .expect("canonicalize resolved plugin-manager persistence config path");
+            .expect("canonicalize resolved canonical plugin selection config path");
         let expected = root_plugins_path
             .canonicalize()
-            .expect("canonicalize repo-root plugin-manager persistence config path");
+            .expect("canonicalize repo-root plugin selection config path");
 
         assert_eq!(resolved, expected);
 
@@ -884,7 +895,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn invalid_startup_config_keeps_plugin_manager_persistence_path_available() {
+    fn invalid_startup_config_keeps_implicit_plugin_overrides_available() {
         let temp = tempfile::tempdir().expect("create tempdir");
         let repo_root = temp.path();
         let root_config_dir = repo_root.join("config");

@@ -1,39 +1,8 @@
 use coldvox_app::Settings;
 use coldvox_foundation::skip_test_unless;
-use serial_test::serial;
 use std::env;
-use std::ffi::OsString;
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
-
-struct EnvVarGuard {
-    key: &'static str,
-    previous: Option<OsString>,
-}
-
-impl EnvVarGuard {
-    fn set(key: &'static str, value: &str) -> Self {
-        let previous = env::var_os(key);
-        env::set_var(key, value);
-        Self { key, previous }
-    }
-
-    fn remove(key: &'static str) -> Self {
-        let previous = env::var_os(key);
-        env::remove_var(key);
-        Self { key, previous }
-    }
-}
-
-impl Drop for EnvVarGuard {
-    fn drop(&mut self) {
-        if let Some(previous) = self.previous.take() {
-            env::set_var(self.key, previous);
-        } else {
-            env::remove_var(self.key);
-        }
-    }
-}
 
 fn get_test_config_path() -> PathBuf {
     // Try workspace root first (for integration tests)
@@ -62,17 +31,14 @@ fn write_temp_config(contents: &str) -> NamedTempFile {
 }
 
 #[test]
-#[serial]
 fn test_settings_new_default() {
     // Ensure we test pure defaults without loading repository config files
-    let _skip_discovery = EnvVarGuard::set("COLDVOX_SKIP_CONFIG_DISCOVERY", "1");
-    let _preferred = EnvVarGuard::remove("COLDVOX__STT__PREFERRED");
+    std::env::set_var("COLDVOX_SKIP_CONFIG_DISCOVERY", "1");
     // Test default loading without file - Settings::new() will use defaults if no config found
     let settings = Settings::new().unwrap();
     assert_eq!(settings.resampler_quality.to_lowercase(), "balanced");
     assert_eq!(settings.activation_mode.to_lowercase(), "vad");
     assert_eq!(settings.injection.max_total_latency_ms, 800);
-    assert_eq!(settings.stt.preferred.as_deref(), Some("mock"));
     assert!(settings.stt.failover_threshold > 0);
     assert_eq!(settings.stt.remote.base_url, "http://localhost:5092");
     assert_eq!(settings.stt.remote.api_path, "/v1/audio/transcriptions");
@@ -85,22 +51,21 @@ fn test_settings_new_default() {
     assert_eq!(settings.stt.remote.max_payload_bytes, 2_621_440);
     assert!(settings.stt.remote.headers.is_empty());
     assert!(settings.stt.remote.auth.bearer_token_env_var.is_none());
+    std::env::remove_var("COLDVOX_SKIP_CONFIG_DISCOVERY");
 }
 
 #[test]
-#[serial]
-fn test_settings_from_path_uses_mock_startup_and_repo_remote_transport_defaults() {
-    let _preferred = EnvVarGuard::remove("COLDVOX__STT__PREFERRED");
+fn test_settings_from_path_uses_repo_remote_transport_defaults() {
     let settings = Settings::from_path(get_test_config_path()).expect("load default config");
 
-    assert_eq!(settings.stt.preferred.as_deref(), Some("mock"));
+    assert!(settings.stt.preferred.is_none());
     let selection = settings
         .runtime_plugin_selection()
-        .expect("build startup plugin selection");
+        .expect("load canonical plugin selection");
     assert_eq!(
         selection.preferred_plugin.as_deref(),
-        Some("mock"),
-        "repo-root config/plugins.json persistence must not select startup STT"
+        Some("http-remote"),
+        "canonical plugin selection must stay on http-remote"
     );
     assert_eq!(settings.stt.remote.base_url, "http://localhost:5092");
     assert_eq!(settings.stt.remote.api_path, "/v1/audio/transcriptions");
@@ -113,20 +78,6 @@ fn test_settings_from_path_uses_mock_startup_and_repo_remote_transport_defaults(
     assert_eq!(settings.stt.remote.max_payload_bytes, 2_621_440);
     assert!(settings.stt.remote.headers.is_empty());
     assert!(settings.stt.remote.auth.bearer_token_env_var.is_none());
-}
-
-#[test]
-#[serial]
-fn test_env_override_can_select_http_remote_startup() {
-    let _preferred = EnvVarGuard::set("COLDVOX__STT__PREFERRED", "http-remote");
-
-    let settings = Settings::from_path(get_test_config_path()).expect("load default config");
-    let selection = settings
-        .runtime_plugin_selection()
-        .expect("build env-selected startup plugin selection");
-
-    assert_eq!(settings.stt.preferred.as_deref(), Some("http-remote"));
-    assert_eq!(selection.preferred_plugin.as_deref(), Some("http-remote"));
 }
 
 #[test]
