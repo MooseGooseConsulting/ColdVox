@@ -65,13 +65,16 @@ CodeRabbit's configuration is **global** (managed in the CodeRabbit web dashboar
 
 ## Runner Architecture
 
-> **Principle**: The laptop only does what only the laptop can do.
+> **Principle**: GitHub-hosted runners only do cheap deterministic gates; heavy
+> Rust, container, and live/hardware coverage runs on self-hosted capacity or by
+> explicit manual dispatch.
 
 ## Overview
 
-ColdVox CI splits workloads between GitHub-hosted and self-hosted runners based on one question:
+ColdVox CI splits workloads between GitHub-hosted and self-hosted runners using two questions:
 
-**Does this task require the physical laptop's hardware (display, audio, clipboard)?**
+1. **Is this cheap enough to spend hosted minutes on every PR?**
+2. **Does this task require local hardware, containers, or a warm Rust build cache?**
 
 | Requires Laptop? | Task | Runner |
 |------------------|------|--------|
@@ -97,10 +100,10 @@ ColdVox targets Windows via Tauri GUI. Linux-only CI is insufficient — Windows
 
 ### 1. Hardware Isolation
 
-The self-hosted runner is a laptop with **weak hardware but a live display**. GitHub-hosted runners have **powerful hardware but no display**.
+The self-hosted runner is a laptop with **weak hardware but a live display**. GitHub-hosted runners have **powerful hardware but billable minutes**.
 
-- **Laptop**: Only runs tests that need real display/audio/clipboard
-- **GitHub**: Handles everything else (lint, security, build, unit tests)
+- **Laptop/self-hosted**: Runs heavyweight Rust compilation/tests plus any real display/audio/clipboard/container coverage.
+- **GitHub-hosted**: Runs only cheap deterministic gates such as repo integrity, rustfmt, docs validation, telemetry schema checks, and branch/label automation.
 
 ### 2. Parallelism
 
@@ -108,15 +111,16 @@ GitHub-hosted jobs run in parallel on separate machines. Self-hosted queues on o
 
 ```
 Push PR:
-  GitHub:      [lint] [security] [docs] [build+unit-tests]  ← All parallel
-  Self-hosted: [hardware tests]                              ← Only hardware-dependent tests
+  GitHub:      [repo integrity] [rustfmt] [docs/telemetry if path-matched]
+  Self-hosted: [cargo check/build] [clippy+doc] [unit tests]
+  Manual:      [live text injection] [Whisper golden master] [Parakeet container]
 
-Total time: max(GitHub jobs, hardware tests)
+Hosted spend stays bounded by the cheap path-filtered jobs; heavyweight jobs queue on free self-hosted capacity.
 ```
 
 ### 3. No Wasted Work
 
-The laptop does minimal work - just the tests that *require* hardware access.
+Docs-only changes do not start the Rust workspace build/test pipeline. Feature-branch pushes do not start hosted CI; opening or updating a PR into `main` or `tauri-base` does.
 
 ---
 
@@ -139,8 +143,8 @@ The laptop does minimal work - just the tests that *require* hardware access.
 | `GabrielBB/xvfb-action` | Internally calls `apt-get` (doesn't exist) |
 | `sudo apt-get install` | Wrong package manager |
 | `DISPLAY=:99` | Conflicts with real display (`:0`) |
-| Running builds on self-hosted | Weak hardware; GitHub-hosted is faster |
-| Running unit tests on self-hosted | Wastes limited resources |
+| Moving heavyweight builds/tests back to hosted runners | Burns billable minutes on every PR |
+| Running live/hardware tests on hosted runners | Hosted runners lack the required display/audio/clipboard devices |
 
 ### Current Burn-Down Guardrails
 
@@ -161,22 +165,14 @@ Wave 1 burn-down keeps default PR CI cheap and avoids stale Linux display setup:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      GITHUB-HOSTED (ubuntu-latest)              │
-│              Parallel, powerful, handles most work              │
+│             Cheap, path-filtered, billable-minute work          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │    lint     │  │  security   │  │    docs     │             │
-│  │             │  │             │  │             │             │
-│  │ fmt --check │  │ cargo audit │  │  cargo doc  │             │
-│  │ clippy      │  │ cargo deny  │  │             │             │
-│  │  ~2 min     │  │  ~2 min     │  │  ~2 min     │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              build_and_unit_tests                        │   │
-│  │  cargo check → cargo build → cargo test --workspace      │   │
-│  │  ~10-15 min                                              │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐   │
+│  │ repo checks  │ │ rustfmt      │ │ docs / telemetry     │   │
+│  │ mechanical   │ │ fmt --check  │ │ path-matched only    │   │
+│  │ no full test │ │ no build     │ │ no LLM by default    │   │
+│  └──────────────┘ └──────────────┘ └──────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
               ║                            
@@ -184,24 +180,13 @@ Wave 1 burn-down keeps default PR CI cheap and avoids stale Linux display setup:
               ║                            
 ┌─────────────────────────────────────────────────────────────────┐
 │                 SELF-HOSTED (Fedora/Nobara)                     │
-│        Weak hardware BUT has live KDE Plasma display            │
+│         Free minutes, warm Rust cache, live desktop             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   hardware_tests                         │   │
-│  │                                                          │   │
-│  │  Environment:                                            │   │
-│  │  • DISPLAY=:0 (live session, NOT :99)                   │   │
-│  │  • WAYLAND_DISPLAY=wayland-0                            │   │
-│  │  • Real audio, real clipboard                           │   │
-│  │                                                          │   │
-│  │  Tests:                                                  │   │
-│  │  • real-injection-tests (xdotool, ydotool, clipboard)   │   │
-│  │  • hardware_check (audio capture, display access)       │   │
-│  │                                                          │   │
-│  │  Total: ~5-10 min (minimal work!)                       │   │
-│  │                                                          │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────┐ ┌──────────────────┐ ┌───────────────┐  │
+│  │ cargo check/build│ │ clippy/doc/tests │ │ manual live    │  │
+│  │ default PR gate  │ │ default PR gate  │ │ Whisper/Parakeet│  │
+│  └──────────────────┘ └──────────────────┘ └───────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               │

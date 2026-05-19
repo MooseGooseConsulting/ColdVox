@@ -69,16 +69,16 @@ windows-live:
 
 # Canonical Parakeet HTTP container lifecycle for local/live STT development
 parakeet-up:
-    docker compose -f ops/parakeet/docker-compose.yml up -d parakeet-cpu
+    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Up
 
 parakeet-down:
-    docker compose -f ops/parakeet/docker-compose.yml down
+    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Down
 
 parakeet-health:
-    pwsh -NoProfile -Command '$ErrorActionPreference = "Stop"; $r = Invoke-RestMethod -Uri "http://localhost:5092/health" -TimeoutSec 10; if ($r.status -ne "ok") { throw "Unexpected Parakeet health response: $($r | ConvertTo-Json -Compress)" }; $r | ConvertTo-Json -Compress'
+    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Health
 
 parakeet-logs tail="200":
-    docker compose -f ops/parakeet/docker-compose.yml logs --tail={{tail}} parakeet-cpu
+    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Logs -Tail {{tail}}
 
 parakeet-validate:
     pwsh -NoProfile -File scripts/integration_parakeet.ps1
