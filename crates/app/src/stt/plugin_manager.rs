@@ -633,12 +633,10 @@ impl SttPluginManager {
     }
 
     fn register_builtin_plugins(_registry: &mut SttPluginRegistry) {
-        // Register mock plugin for tests
-        #[cfg(test)]
-        {
-            use coldvox_stt::plugins::mock::MockPluginFactory;
-            _registry.register(Box::new(MockPluginFactory::default()));
-        }
+        // Register the mock plugin for deterministic default startup. Live-capable
+        // profiles opt into concrete backends through explicit config/env/CLI.
+        use coldvox_stt::plugins::mock::MockPluginFactory;
+        _registry.register(Box::new(MockPluginFactory::default()));
 
         #[cfg(feature = "http-remote")]
         {
@@ -1521,7 +1519,7 @@ mod tests {
         let plugins = manager.list_plugins_sync();
         assert!(!plugins.is_empty());
 
-        // Test builds should expose Mock, and runtime builds expose canonical http-remote when enabled.
+        // Default builds expose Mock, and runtime builds expose canonical http-remote when enabled.
         let plugin_ids: Vec<String> = plugins.iter().map(|p| p.id.clone()).collect();
         assert!(plugin_ids.contains(&"mock".to_string()));
         #[cfg(feature = "http-remote")]
@@ -1624,7 +1622,10 @@ mod tests {
             .await
             .expect("apply runtime-only plugin selection");
 
-        assert_eq!(manager.selection_config.preferred_plugin.as_deref(), Some("mock"));
+        assert_eq!(
+            manager.selection_config.preferred_plugin.as_deref(),
+            Some("mock")
+        );
         let persisted_after =
             std::fs::read_to_string(&config_path).expect("read persisted plugin config");
         assert_eq!(persisted_after, persisted_config);

@@ -33,7 +33,7 @@ ColdVox's first-class Windows backend is the local HTTP Parakeet CPU container:
 - Transcription: `POST /v1/audio/transcriptions`
 - Model field: `parakeet-tdt-0.6b-v2`
 
-`config/default.toml` carries the HTTP transport defaults without making the live path implicit. `config/windows-parakeet.toml` is the explicit Windows live profile; it selects `http-remote` and enables `allow_enigo = true` for launcher/live runs.
+`config/default.toml` carries the HTTP transport defaults while keeping normal startup on `mock`. `config/plugins.json` is plugin-manager persistence and must not act as a primary startup selector. `config/windows-parakeet.toml` is the explicit Windows live profile; it selects `http-remote` and enables `allow_enigo = true` for launcher/live runs.
 
 ## Commands
 

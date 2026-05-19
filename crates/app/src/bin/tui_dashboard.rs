@@ -439,11 +439,11 @@ async fn run_app(
                                 state.log(LogLevel::Info, "Starting audio pipeline...".to_string());
                                 // Build runtime options
                                 let settings = coldvox_app::Settings::new()
-                                    .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                                    .map_err(io::Error::other)?;
                                 let stt_selection = Some(
                                     settings
                                         .runtime_plugin_selection()
-                                        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?,
+                                        .map_err(io::Error::other)?,
                                 );
                                 #[cfg(feature = "http-remote")]
                                 let http_remote_config = Some(settings.runtime_http_remote_config());
