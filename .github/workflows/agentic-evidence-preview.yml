@@ -6,6 +6,16 @@ on:
     types: [opened, synchronize, ready_for_review, labeled]
     branches:
       - main
+    paths:
+      - ".github/prompts/**"
+      - ".github/workflows/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "config/**"
+      - "crates/**"
+      - "docs/northstar.md"
+      - "docs/plans/**"
+      - "scripts/**"
 
 # Shadow mode: all jobs are advisory only. They never block a PR.
 # All merge decisions remain with human reviewers.
