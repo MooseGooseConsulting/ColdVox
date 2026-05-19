@@ -814,6 +814,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn repo_root_plugins_json_keeps_canonical_http_remote_profile() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let root_plugins_path = repo_root.join("config/plugins.json");
