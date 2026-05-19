@@ -1,0 +1,287 @@
+schema_version: 1
+plan_id: coldvox_recovery_2026_05_19
+plan_type: recovery_program
+title: ColdVox Recovery Plan
+status: reviewed
+wave: 0
+created_at: "2026-05-19"
+reviewed_at: "2026-05-19"
+reviewed_by: gem-documentation-writer
+
+objective: >
+  Recover ColdVox by consolidating active feature work into tauri-base,
+  validating the Parakeet HTTP/containerized STT path with live hardware where
+  required, and promoting to main only through the documented gate.
+
+operating_constraints:
+  - Do not push, merge, or delete branches during Wave 0 documentation setup.
+  - Treat code, tests, and current runbooks as the source of truth.
+  - Keep recovery docs durable, concise, and optimized for LLM execution.
+  - Do not substitute mocked audio/input/display behavior for live validation signals.
+
+source_documents_reviewed:
+  - path: AGENTS.md
+    finding: Windows-first validation uses the root justfile and live hardware paths when behavior requires it.
+  - path: docs/dev/CI/architecture.md
+    finding: main is the stable trunk; tauri-base is the GUI/integration trunk; main promotion is gated.
+  - path: docs/windows-live-runbook.md
+    finding: Windows validation produces artifacts under logs/windows-validation/<timestamp>-<mode>/.
+  - path: docs/domains/foundation/fdn-testing-guide.md
+    finding: just test is the current required Windows-safe gate; live GPU/runtime validation is opt-in when required.
+  - path: docs/PRD.yaml
+    finding: PRD refreshed for recovery-specific branch, STT, validation, and CI policy.
+
+key_decisions:
+  - id: main_default_stable
+    decision: main is the GitHub default and stable trunk.
+    implication: main receives only validated promotions, not direct feature consolidation.
+  - id: tauri_base_integration_trunk
+    decision: tauri-base is the feature and integration trunk per CI architecture.
+    implication: GUI, integration, and active recovery work target tauri-base first.
+  - id: feat_codex_consolidation
+    decision: feat/codex work consolidates into tauri-base before promotion.
+    implication: branch inventory and conflict resolution happen against tauri-base.
+  - id: promotion_only_after_gate
+    decision: tauri-base promotes to main only through the documented validation gate.
+    implication: promotion requires recorded validation evidence and manual main review.
+  - id: parakeet_http_forward_path
+    decision: Parakeet HTTP/containerized STT under ops/parakeet is the forward STT path.
+    implication: recovery validation must exercise the container/runtime path, not only compile checks.
+  - id: live_hardware_required
+    decision: live hardware tests are available on the target platform and must be part of validation.
+    implication: runtime-sensitive work requires real audio/display/input/GPU evidence, not mocks.
+  - id: ci_minutes_reduction
+    decision: CI must reduce GitHub-hosted minutes through routing and tighter triggers.
+    implication: cheap checks stay hosted; expensive/container/hardware jobs route to local or self-hosted paths.
+
+branch_policy:
+  main:
+    role: GitHub default and stable trunk
+    merge_policy: manual only; no automerge
+    allowed_recovery_source: tauri-base after validation gate
+  tauri-base:
+    role: feature and integration trunk
+    merge_policy: CI and AI-review gated per architecture
+    receives:
+      - GUI and Tauri integration work
+      - Parakeet HTTP/containerized STT recovery work
+      - feat/codex consolidation PRs
+  feature_branches:
+    role: short-lived recovery work branches
+    target: tauri-base unless explicitly stable-trunk-only
+
+stt_strategy:
+  forward_path: ops/parakeet/docker-compose.yml
+  backend: Parakeet HTTP/containerized STT
+  requirements:
+    - preserve checked-in default config safety where runtime defaults remain deterministic
+    - validate container startup, health, request/response behavior, and shutdown through canonical commands
+    - document artifacts for every live or container validation run
+  non_paths:
+    - whisper feature stubs
+    - coqui feature stubs
+    - leopard feature stubs
+    - silero-stt feature stubs
+
+validation_policy:
+  local_windows_required_gate:
+    commands:
+      - just windows-run-preflight
+      - just windows-smoke
+      - just test
+    artifact_root: logs/windows-validation/<timestamp>-<mode>/
+    applies_to:
+      - Windows runtime behavior
+      - STT configuration changes
+      - text injection changes
+      - recovery promotion evidence
+  local_windows_live_gate:
+    environment:
+      COLDVOX_RUN_WINDOWS_LIVE: "1"
+    command: just test
+    applies_when:
+      - Parakeet runtime behavior changes
+      - GPU-backed live path changes
+      - audio, VAD, STT, or injection pipeline behavior changes
+  ci_gate:
+    hosted_runner_scope:
+      - formatting
+      - linting
+      - docs and metadata checks
+      - lightweight unit tests where cost-effective
+    self_hosted_or_local_scope:
+      - hardware tests
+      - containerized STT integration
+      - display/audio/clipboard validation
+    trigger_policy:
+      - use concurrency cancellation for superseded runs
+      - avoid expensive jobs for documentation-only changes unless validation docs or CI behavior changed
+      - route branch-specific checks according to main and tauri-base roles
+
+promotion_gate:
+  from: tauri-base
+  to: main
+  allowed_after:
+    - branch consolidation complete
+    - Parakeet HTTP/containerized STT validation evidence captured
+    - required Windows gate artifacts recorded
+    - CI routing policy satisfied
+    - manual review complete because main has no automerge
+  blocked_if:
+    - live hardware evidence is missing for runtime-sensitive changes
+    - feature work bypassed tauri-base
+    - GitHub-hosted CI is used for avoidable expensive/container/hardware workload
+
+waves:
+  - id: wave_0
+    name: Recovery documentation reset
+    status: completed
+    purpose: Establish the PRD and reviewed plan that agents use before implementation.
+    deliverables:
+      - docs/PRD.yaml
+      - docs/plan/coldvox_recovery_2026_05_19/plan.yaml
+  - id: wave_1
+    name: Branch inventory and consolidation design
+    status: next
+    purpose: Identify active feat/codex recovery branches and prepare tauri-base consolidation PRs.
+  - id: wave_2
+    name: Parakeet HTTP/container validation
+    status: planned
+    purpose: Standardize and validate ops/parakeet runtime behavior through canonical commands.
+  - id: wave_3
+    name: CI routing and trigger tightening
+    status: planned
+    purpose: Reduce hosted minutes and route expensive validation to self-hosted or local paths.
+  - id: wave_4
+    name: Promotion readiness
+    status: planned
+    purpose: Decide whether tauri-base has enough evidence to promote to main through the documented gate.
+
+tasks:
+  - id: wave0_prd_refresh
+    wave: wave_0
+    title: Refresh recovery PRD
+    status: completed
+    owner: gem-documentation-writer
+    outputs:
+      - docs/PRD.yaml
+    acceptance:
+      - PRD captures branch policy, Parakeet HTTP path, live validation, and CI cost controls.
+  - id: wave0_plan_review
+    wave: wave_0
+    title: Write reviewed recovery plan
+    status: completed
+    owner: gem-documentation-writer
+    outputs:
+      - docs/plan/coldvox_recovery_2026_05_19/plan.yaml
+    acceptance:
+      - plan contains all Wave 0 key decisions and no summary markdown artifact.
+  - id: branch_inventory
+    wave: wave_1
+    title: Inventory active feat/codex recovery work
+    status: ready
+    owner: gem-planner
+    actions:
+      - list active feat/codex branches related to Parakeet HTTP, containers, CI, and live tests
+      - classify each branch as consolidate, supersede, or archive-by-PR-note
+      - identify conflicts against tauri-base without pushing or deleting branches
+    acceptance:
+      - consolidation sequence is documented before implementation begins
+  - id: tauri_base_consolidation
+    wave: wave_1
+    title: Consolidate recovery work into tauri-base
+    status: planned
+    owner: gem-implementer
+    depends_on:
+      - branch_inventory
+    actions:
+      - open or update PRs targeting tauri-base
+      - resolve conflicts against tauri-base as the integration baseline
+      - keep main untouched until promotion gate is satisfied
+    acceptance:
+      - tauri-base contains the selected recovery work with required checks passing
+  - id: parakeet_container_command_surface
+    wave: wave_2
+    title: Standardize Parakeet container command surface
+    status: planned
+    owner: gem-implementer
+    context:
+      - ops/parakeet/docker-compose.yml
+      - justfile
+    acceptance:
+      - container lifecycle and validation are exposed through canonical just recipes or documented wrappers
+      - health checks fail early with actionable messages
+  - id: live_validation_run
+    wave: wave_2
+    title: Capture live validation evidence
+    status: planned
+    owner: gem-validator
+    commands:
+      - just windows-run-preflight
+      - just windows-smoke
+      - just test
+    optional_commands:
+      - COLDVOX_RUN_WINDOWS_LIVE=1 just test
+    acceptance:
+      - artifact paths are recorded in PR descriptions or validation notes
+      - runtime-sensitive changes include live hardware evidence
+  - id: ci_routing_update
+    wave: wave_3
+    title: Tighten CI triggers and runner routing
+    status: planned
+    owner: gem-devops
+    context:
+      - docs/dev/CI/architecture.md
+      - .github/workflows/ci.yml
+      - .github/workflows/gate-main.yml
+    acceptance:
+      - cheap checks remain on GitHub-hosted runners
+      - expensive/container/hardware checks route to self-hosted or local validation paths
+      - documentation-only changes avoid unnecessary expensive jobs where safe
+  - id: promotion_readiness_review
+    wave: wave_4
+    title: Review tauri-base promotion readiness
+    status: planned
+    owner: maintainers
+    depends_on:
+      - tauri_base_consolidation
+      - live_validation_run
+      - ci_routing_update
+    acceptance:
+      - tauri-base has recorded validation evidence
+      - main promotion follows the documented gate and manual review policy
+
+coverage_matrix:
+  - requirement: main is GitHub default and stable trunk
+    covered_by:
+      - key_decisions.main_default_stable
+      - branch_policy.main
+      - promotion_gate
+  - requirement: tauri-base is feature and integration trunk
+    covered_by:
+      - key_decisions.tauri_base_integration_trunk
+      - branch_policy.tauri-base
+  - requirement: feat/codex work consolidates into tauri-base before main
+    covered_by:
+      - key_decisions.feat_codex_consolidation
+      - tasks.branch_inventory
+      - tasks.tauri_base_consolidation
+  - requirement: ops/parakeet is forward Parakeet HTTP/container STT path
+    covered_by:
+      - stt_strategy
+      - tasks.parakeet_container_command_surface
+  - requirement: live hardware validation is required and not mocked
+    covered_by:
+      - validation_policy.local_windows_required_gate
+      - validation_policy.local_windows_live_gate
+      - tasks.live_validation_run
+  - requirement: CI reduces hosted minutes through routing and triggers
+    covered_by:
+      - validation_policy.ci_gate
+      - tasks.ci_routing_update
+
+visual_yaml_review:
+  status: passed
+  notes:
+    - YAML uses explicit mappings, lists, and quoted date-like scalar values.
+    - No tab indentation was introduced and all values are concrete.
