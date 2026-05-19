@@ -1,17 +1,11 @@
 ---
 name: CI
 
+# Full/nightly CI is deliberately not a default PR/push workflow. The default
+# gate is ci-minimal.yml; this workflow is for manual or scheduled self-hosted
+# validation, including quarantined Whisper/live-display coverage.
+
 on:
-  push:
-    branches:
-      - main
-      - "release/*"
-      - "feature/*"
-      - "feat/*"
-      - "fix/*"
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       run_stale_stt:
@@ -28,7 +22,7 @@ permissions:
   security-events: write
 
 concurrency:
-  group: ci-full-${{ github.event.pull_request.number || github.ref }}
+  group: ci-full-${{ github.ref || github.run_id }}
   cancel-in-progress: true
 
 defaults:
@@ -45,7 +39,7 @@ env:
 jobs:
   repo-integrity:
     name: Repo Integrity Checks
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, fedora, nobara]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.0
@@ -117,6 +111,7 @@ jobs:
   build_and_check:
     name: Build & Test
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
+    timeout-minutes: 90
     strategy:
       matrix:
         rust-version: [stable, "1.75"] # MSRV is 1.75

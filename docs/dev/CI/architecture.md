@@ -75,12 +75,9 @@ ColdVox CI splits workloads between GitHub-hosted and self-hosted runners based 
 
 | Requires Laptop? | Task | Runner |
 |------------------|------|--------|
-| No | `cargo fmt --check` | GitHub-hosted |
-| No | `cargo clippy` | GitHub-hosted |
-| No | `cargo audit`, `cargo deny` | GitHub-hosted |
-| No | `cargo build` | GitHub-hosted |
-| No | `cargo test --workspace` (unit tests) | GitHub-hosted |
-| **Yes** | Hardware tests (display, audio, clipboard) | Self-hosted |
+| No | Repo integrity, `cargo fmt --check`, docs validation, telemetry schema | GitHub-hosted, path-filtered |
+| No, but heavyweight | Workspace `cargo check`, `cargo build`, `cargo clippy`, `cargo doc`, `cargo test --workspace` | Self-hosted Fedora/Nobara or manual/nightly full CI |
+| **Yes** | Hardware/live tests (display, audio, clipboard) and container-backed Parakeet integration | Self-hosted, manual `workflow_dispatch` unless explicitly scheduled |
 
 ### Windows CI (Planned)
 
@@ -88,8 +85,8 @@ ColdVox targets Windows via Tauri GUI. Linux-only CI is insufficient — Windows
 
 | Runner | Purpose | Minute cost |
 |--------|---------|-------------|
-| GitHub-hosted Linux (`ubuntu-latest`) | Repo integrity, docs, lightweight checks | 1x |
-| Self-hosted Linux (Nobara laptop) | Cargo build/test/lint, hardware tests | 0 (free) |
+| GitHub-hosted Linux (`ubuntu-latest`) | Repo integrity, rustfmt, docs, telemetry schema, branch/label gates | 1x, path-filtered and concurrency-cancelled |
+| Self-hosted Linux (Nobara laptop) | Cargo build/test/clippy/doc, hardware tests, container/live validation | 0 (free) |
 | **Self-hosted Windows (planned)** | **Windows build, Tauri GUI tests, platform checks** | **0 (free)** |
 
 **Status**: Self-hosted Windows runner setup is pending. See TODO in project tracking.
@@ -150,9 +147,12 @@ The laptop does minimal work - just the tests that *require* hardware access.
 Wave 1 burn-down keeps default PR CI cheap and avoids stale Linux display setup:
 
 - Workflow concurrency groups are workflow-specific (`ci-full-*`, `ci-minimal-*`, `docs-ci-*`) so one workflow does not cancel another on the same ref.
+- `ci-minimal.yml` is the default branch/PR gate for `main` and `tauri-base`; feature-branch pushes do not spend hosted minutes, but PRs into either trunk still validate.
+- Docs-only PRs route to `docs-ci.yml`; Rust workspace builds/tests are path-filtered out unless code/config/CI inputs changed.
+- `ci.yml` is full/nightly validation only (`workflow_dispatch` or schedule). It is not a broad push/PR trigger.
 - Default PR CI does not hydrate Whisper models or install Faster-Whisper. Whisper golden-master coverage is quarantined to nightly/manual live-runner paths.
 - Self-hosted Fedora/Nobara jobs must use the live desktop session provided by the runner. They must not start Xvfb or force `DISPLAY=:99`.
-- Expensive AI review workflows remain advisory/shadow mode, but external model calls are explicit opt-ins or limited to moderate/complex PRs.
+- Expensive AI/docs review workflows remain advisory/shadow mode. Default hosted docs CI uploads the deterministic semantic packet and skips external LLM calls unless a human/agent explicitly runs them outside the default gate.
 
 ---
 

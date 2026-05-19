@@ -1,10 +1,42 @@
 name: CI (Minimal)
 
+# Default PR/push gate. Keep GitHub-hosted usage intentionally tiny here:
+# repo integrity and rustfmt only. Workspace builds/tests/clippy/docs run on the
+# free self-hosted Fedora/Nobara runner, and live/Whisper checks stay manual.
+
 on:
   push:
-    branches: [main, "release/*", "feature/*", "feat/*", "fix/*"]
+    branches: [main, tauri-base, "release/*"]
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/ci-minimal.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - "justfile"
+      - "mise.toml"
+      - "pyproject.toml"
+      - "config/**"
+      - "crates/**"
+      - "scripts/ci/**"
+      - "scripts/lint_repo_integrity.py"
+      - ".test-skip-baseline.json"
   pull_request:
     branches: [main, tauri-base]
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/ci-minimal.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - "justfile"
+      - "mise.toml"
+      - "pyproject.toml"
+      - "config/**"
+      - "crates/**"
+      - "scripts/ci/**"
+      - "scripts/lint_repo_integrity.py"
+      - ".test-skip-baseline.json"
   workflow_dispatch:
     inputs:
       run_live_text_injection:
@@ -36,18 +68,28 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
       - name: Run repo integrity checks
         env:
           SKIP_INTEGRITY_CHECKS: "1,2,3,4,6"
         run: python3 scripts/lint_repo_integrity.py
 
-  # Fast compilation check on MSRV and stable
+  format:
+    name: Rust Format (hosted, cheap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  # Heavyweight Rust compilation stays off GitHub-hosted minutes.
   check:
     name: Check (${{ matrix.rust }})
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
+    timeout-minutes: 45
     strategy:
       matrix:
         rust: [stable, "1.90"] # MSRV
@@ -71,11 +113,12 @@ jobs:
       - name: Build
         run: cargo build --workspace --locked
 
-  # Linting and formatting (stable only)
+  # Clippy and cargo doc are useful safety checks, but expensive enough to keep
+  # on the self-hosted runner rather than hosted Ubuntu.
   lint:
-    name: Lint & Format
+    name: Clippy & Rustdoc (self-hosted)
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
-    continue-on-error: true
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -90,9 +133,6 @@ jobs:
         with:
           key: ${{ steps.rust-version.outputs.version }}
       
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-      
       - name: Clippy
         run: cargo clippy --all-targets --locked -- -D warnings
       
@@ -103,6 +143,7 @@ jobs:
   test:
     name: Test
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
