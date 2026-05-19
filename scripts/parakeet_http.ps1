@@ -50,7 +50,12 @@ switch ($Action) {
         Invoke-DockerCompose -ArgumentList @('down')
     }
     'Health' {
-        $response = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 10
+        try {
+            $response = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 10
+        } catch {
+            throw "Parakeet health check failed at ${HealthUrl}. Start Docker Desktop and run 'just parakeet-up'. $($_.Exception.Message)"
+        }
+
         if ($response.status -ne 'ok') {
             $body = $response | ConvertTo-Json -Compress
             throw "Unexpected Parakeet health response from ${HealthUrl}: $body"
