@@ -156,19 +156,37 @@ impl SttPluginManager {
         &mut self,
         cfg: PluginSelectionConfig,
     ) -> Result<(), ColdVoxError> {
+        self.apply_selection_config(cfg, true).await
+    }
+
+    /// Apply plugin selection for the current process without rewriting persisted config.
+    pub async fn set_runtime_selection_config(
+        &mut self,
+        cfg: PluginSelectionConfig,
+    ) -> Result<(), ColdVoxError> {
+        self.apply_selection_config(cfg, false).await
+    }
+
+    async fn apply_selection_config(
+        &mut self,
+        cfg: PluginSelectionConfig,
+        persist: bool,
+    ) -> Result<(), ColdVoxError> {
         cfg.validate_runtime_policy()?;
         let gc_enabled = cfg.gc_policy.as_ref().is_some_and(|gc| gc.enabled);
         let metrics_enabled = cfg.metrics.is_some();
 
         self.selection_config = cfg;
 
-        // Save configuration to disk
-        if let Err(e) = self.save_config().await {
-            warn!(
-                target: "coldvox::stt",
-                error = ?e,
-                "Failed to save plugin configuration"
-            );
+        if persist {
+            // Save configuration to disk only for explicit persistence updates.
+            if let Err(e) = self.save_config().await {
+                warn!(
+                    target: "coldvox::stt",
+                    error = ?e,
+                    "Failed to save plugin configuration"
+                );
+            }
         }
 
         // Start or stop GC task based on configuration
@@ -190,7 +208,8 @@ impl SttPluginManager {
         info!(
             target: "coldvox::stt",
             event = "config_updated",
-            "Updated STT plugin selection configuration and saved to disk"
+            persisted = persist,
+            "Updated STT plugin selection configuration"
         );
 
         Ok(())
@@ -614,12 +633,10 @@ impl SttPluginManager {
     }
 
     fn register_builtin_plugins(_registry: &mut SttPluginRegistry) {
-        // Register mock plugin for tests
-        #[cfg(test)]
-        {
-            use coldvox_stt::plugins::mock::MockPluginFactory;
-            _registry.register(Box::new(MockPluginFactory::default()));
-        }
+        // Register the mock plugin for deterministic default startup. Live-capable
+        // profiles opt into concrete backends through explicit config/env/CLI.
+        use coldvox_stt::plugins::mock::MockPluginFactory;
+        _registry.register(Box::new(MockPluginFactory::default()));
 
         #[cfg(feature = "http-remote")]
         {
@@ -1502,7 +1519,7 @@ mod tests {
         let plugins = manager.list_plugins_sync();
         assert!(!plugins.is_empty());
 
-        // Test builds should expose Mock, and runtime builds expose canonical http-remote when enabled.
+        // Default builds expose Mock, and runtime builds expose canonical http-remote when enabled.
         let plugin_ids: Vec<String> = plugins.iter().map(|p| p.id.clone()).collect();
         assert!(plugin_ids.contains(&"mock".to_string()));
         #[cfg(feature = "http-remote")]
@@ -1570,6 +1587,48 @@ mod tests {
         assert!(err
             .to_string()
             .contains("mock is test-only and cannot be a production fallback"));
+    }
+
+    #[tokio::test]
+    async fn test_runtime_selection_config_does_not_rewrite_persisted_config() {
+        let config_path = create_test_config_path();
+        let persisted_config = r#"{
+  "preferred_plugin": null,
+  "fallback_plugins": [],
+  "require_local": false,
+  "max_memory_mb": null,
+  "required_language": "en",
+  "failover": null,
+  "gc_policy": null,
+  "metrics": null,
+  "auto_extract_model": true
+}"#;
+        std::fs::write(&config_path, persisted_config).expect("write persisted plugin config");
+
+        let mut manager = SttPluginManager::new_with_config_path(config_path.clone());
+
+        manager
+            .set_runtime_selection_config(PluginSelectionConfig {
+                preferred_plugin: Some("mock".to_string()),
+                fallback_plugins: vec![],
+                require_local: false,
+                max_memory_mb: None,
+                required_language: Some("en".to_string()),
+                failover: None,
+                gc_policy: None,
+                metrics: None,
+                auto_extract_model: true,
+            })
+            .await
+            .expect("apply runtime-only plugin selection");
+
+        assert_eq!(
+            manager.selection_config.preferred_plugin.as_deref(),
+            Some("mock")
+        );
+        let persisted_after =
+            std::fs::read_to_string(&config_path).expect("read persisted plugin config");
+        assert_eq!(persisted_after, persisted_config);
     }
 
     #[cfg(feature = "http-remote")]

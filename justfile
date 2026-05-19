@@ -67,6 +67,22 @@ windows-smoke:
 windows-live:
     pwsh -NoProfile -File scripts/windows_live_validate.ps1 -Mode Live
 
+# Canonical Parakeet HTTP container lifecycle for local/live STT development
+parakeet-up:
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Up }"
+
+parakeet-down:
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Down }"
+
+parakeet-health:
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Health }"
+
+parakeet-logs tail="200":
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Logs -Tail {{tail}} }"
+
+parakeet-validate:
+    pwsh -NoProfile -File scripts/integration_parakeet.ps1
+
 # Live integration tests against the parakeet-cpu HTTP container.
 # Brings the container up via docker compose, waits for /health, then runs
 # both the plugin-level and the app-level wiring tests with -- --ignored.
@@ -92,7 +108,7 @@ windows-test:
     just windows-smoke
     if ($env:COLDVOX_RUN_WINDOWS_LIVE -eq '1') { cargo run -p coldvox-text-injection --example test_enigo_live --no-default-features --features enigo --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; just windows-live; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } else { Write-Host 'Skipping live Windows validation; set COLDVOX_RUN_WINDOWS_LIVE=1 to run the Enigo example and just windows-live.' -ForegroundColor Yellow }
 
-# Run main app with the canonical wave-1 HTTP remote profile
+# Run main app with the canonical Windows HTTP remote profile
 run:
     #!/usr/bin/env pwsh
     if ($IsWindows) {
@@ -101,7 +117,7 @@ run:
     }
     cargo run -p coldvox-app --bin coldvox --features http-remote,text-injection
 
-# Run TUI dashboard with the canonical wave-1 HTTP remote profile
+# Run TUI dashboard with the canonical Windows HTTP remote profile
 tui:
     #!/usr/bin/env pwsh
     if ($IsWindows) {

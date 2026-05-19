@@ -438,13 +438,24 @@ async fn run_app(
                             if !state.is_running {
                                 state.log(LogLevel::Info, "Starting audio pipeline...".to_string());
                                 // Build runtime options
+                                let settings = coldvox_app::Settings::new()
+                                    .map_err(io::Error::other)?;
+                                let stt_selection = Some(
+                                    settings
+                                        .runtime_plugin_selection()
+                                        .map_err(io::Error::other)?,
+                                );
+                                #[cfg(feature = "http-remote")]
+                                let http_remote_config = Some(settings.runtime_http_remote_config());
                                 let mut opts = app_runtime::AppRuntimeOptions {
                                     device: if state.selected_device == "default" || state.selected_device.is_empty() { None } else { Some(state.selected_device.clone()) },
                                     activation_mode: state.activation_mode,
                                     resampler_quality: state.resampler_quality,
-                                    stt_selection: Some(coldvox_stt::plugin::PluginSelectionConfig::default()),
+                                    stt_selection,
+                                    #[cfg(feature = "http-remote")]
+                                    http_remote_config,
                                     enable_device_monitor: false,
-                                    capture_buffer_samples: 65_536,
+                                    capture_buffer_samples: settings.audio.capture_buffer_samples,
                                     ..Default::default()
                                 };
 

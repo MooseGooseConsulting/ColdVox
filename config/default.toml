@@ -55,8 +55,10 @@ min_success_rate = 0.3           # Minimum success rate before fallback
 min_sample_size = 5              # Samples before trusting success rate
 
 [stt]
-# The canonical startup plugin selection lives in config/plugins.json.
-# This file carries runtime policy and the canonical HTTP remote transport settings.
+# Normal startup stays deterministic and test-friendly by using the mock STT plugin.
+# config/plugins.json is plugin-manager persistence, not a primary startup selector.
+# Use config/windows-parakeet.toml or COLDVOX__STT__PREFERRED=http-remote to opt into Parakeet HTTP.
+preferred = "mock"
 fallbacks = []
 require_local = false
 # max_mem_mb = 1024               # Memory limit in MB (omit for no limit)

@@ -19,15 +19,15 @@ See `Cargo.toml` in each crate for Rust dependencies. Key runtime dependencies:
 
 - **Audio**: `cpal` (cross-platform audio), `rtrb` (ring buffer)
 - **VAD**: `voice_activity_detector` (Silero ONNX VAD)
-- **STT**: `parakeet-rs` is the supported Windows live path for this wave and expects a local Parakeet model directory on NVIDIA/CUDA hardware. `pyo3` remains in the tree for older Moonshine-related paths, but it is not the primary Windows validation path.
+- **STT**: the supported Windows live path is the Parakeet HTTP container profile (`parakeet-cpu`) on `http://localhost:5092`. `parakeet-rs` / local-model and `pyo3` paths remain in the tree for older or comparison workflows, but they are not the primary Windows validation path.
 - **Text Injection**: `enigo`, `atspi`, `wl-clipboard` bindings
 - **TUI**: `ratatui`, `crossterm`
 
-For day-to-day local validation, the checked-in default path remains `mock`; live Windows runs opt into `parakeet` through `config/windows-parakeet.toml`.
+For day-to-day local validation, keep startup defaults safe; live Windows runs opt into `http-remote` through `config/windows-parakeet.toml` and the `just parakeet-*` / `just windows-*` recipes.
 
 ## Tooling
 
-The tooling and CI sections below remain useful background, but they are not the release gate for the current Windows validation wave. Local Windows validation is the active gate for this pass.
+The tooling and CI sections below remain useful background, but they are not the release gate for the Windows runtime path. Local Windows validation is the active gate.
 
 ### Security Scanning
 
@@ -116,7 +116,7 @@ sccache --show-stats
 
 ## CI Gating Expectations
 
-- **Local Windows validation is the gate for this wave**: use `just test`, `just windows-smoke`, and the opt-in live path on a CUDA-capable Windows machine. GitHub-side checks remain background signal, not the release gate.
-- **Hardware-backed E2E remains opt-in**: real-device jobs still belong on self-hosted hardware when we wire them back in, but they are not the blocking gate for the current Windows correction wave.
+- **Local Windows validation is the gate**: use `just test`, `just windows-smoke`, and the opt-in live path on a Windows machine with the Parakeet HTTP container available. GitHub-side checks remain background signal, not the release gate.
+- **Hardware-backed E2E remains opt-in**: real-device jobs still belong on self-hosted hardware when we wire them back in, but they are not the blocking gate for the current Windows runtime path.
 - **Cache-aware local runs still matter**: warming the local cargo cache before long GPU/device checks keeps the live machine focused on runtime validation instead of repeated compilation.
 - **Python/Rust lock discipline still applies**: keep `uv.lock` and `Cargo.lock` in sync with feature flags and PyO3 ABI choices so local validation reflects the committed dependency graph.

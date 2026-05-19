@@ -1,17 +1,64 @@
 name: CI (Minimal)
 
+# Default PR/push gate. Keep GitHub-hosted usage intentionally tiny here:
+# repo integrity and rustfmt only. Workspace builds/tests/clippy/docs run on the
+# free self-hosted Fedora/Nobara runner, and live/Whisper checks stay manual.
+
 on:
   push:
-    branches: [main, "release/*", "feature/*", "feat/*", "fix/*"]
+    branches: [main, tauri-base, "release/*"]
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - "justfile"
+      - "mise.toml"
+      - "pyproject.toml"
+      - "config/**"
+      - "crates/**"
+      - "ops/parakeet/**"
+      - "scripts/**"
+      - "scripts/ci/**"
+      - "scripts/lint_repo_integrity.py"
+      - ".test-skip-baseline.json"
   pull_request:
     branches: [main, tauri-base]
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - "justfile"
+      - "mise.toml"
+      - "pyproject.toml"
+      - "config/**"
+      - "crates/**"
+      - "ops/parakeet/**"
+      - "scripts/**"
+      - "scripts/ci/**"
+      - "scripts/lint_repo_integrity.py"
+      - ".test-skip-baseline.json"
   workflow_dispatch:
+    inputs:
+      run_live_text_injection:
+        description: "Run optional live-display text injection tests"
+        required: false
+        default: false
+        type: boolean
+      run_whisper_e2e:
+        description: "Run optional Whisper golden-master E2E test"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-minimal-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -25,18 +72,28 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
       - name: Run repo integrity checks
         env:
           SKIP_INTEGRITY_CHECKS: "1,2,3,4,6"
         run: python3 scripts/lint_repo_integrity.py
 
-  # Fast compilation check on MSRV and stable
+  format:
+    name: Rust Format (hosted, cheap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  # Heavyweight Rust compilation stays off GitHub-hosted minutes.
   check:
     name: Check (${{ matrix.rust }})
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
+    timeout-minutes: 45
     strategy:
       matrix:
         rust: [stable, "1.90"] # MSRV
@@ -60,11 +117,12 @@ jobs:
       - name: Build
         run: cargo build --workspace --locked
 
-  # Linting and formatting (stable only)
+  # Clippy and cargo doc are useful safety checks, but expensive enough to keep
+  # on the self-hosted runner rather than hosted Ubuntu.
   lint:
-    name: Lint & Format
+    name: Clippy & Rustdoc (self-hosted)
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
-    continue-on-error: true
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -79,9 +137,6 @@ jobs:
         with:
           key: ${{ steps.rust-version.outputs.version }}
       
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-      
       - name: Clippy
         run: cargo clippy --all-targets --locked -- -D warnings
       
@@ -92,6 +147,7 @@ jobs:
   test:
     name: Test
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -125,6 +181,7 @@ jobs:
   # Optional: Text injection tests (only if tools available)
   text-injection:
     name: Text Injection (Optional)
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_text_injection == true
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
     continue-on-error: true # Don't fail CI if this fails
     steps:
@@ -143,26 +200,22 @@ jobs:
         id: check_tools
         run: |
           has_tools=true
-          for tool in xdotool Xvfb openbox; do
+          for tool in xdotool ydotool wl-paste xclip; do
             if ! command -v $tool &>/dev/null; then
               echo "Missing: $tool"
               has_tools=false
             fi
           done
+          if [[ -z "${DISPLAY:-}" || "$DISPLAY" == ":99" ]]; then
+            echo "Live DISPLAY is missing or points at quarantined :99"
+            has_tools=false
+          fi
           echo "available=$has_tools" >> $GITHUB_OUTPUT
       
       - name: Run text injection tests
         if: steps.check_tools.outputs.available == 'true'
-        env:
-          DISPLAY: :99
         run: |
-          # Start headless X server
-          Xvfb :99 -screen 0 1024x768x24 &
-          sleep 2
-          openbox &
-          sleep 1
-          
-          cargo test -p coldvox-text-injection --locked
+          dbus-run-session -- cargo test -p coldvox-text-injection --locked
       
       - name: Skip text injection tests
         if: steps.check_tools.outputs.available != 'true'
@@ -171,6 +224,7 @@ jobs:
   # Optional: Whisper E2E tests (only if model available)
   whisper-e2e:
     name: Whisper E2E (Optional)
+    if: github.event_name == 'workflow_dispatch' && inputs.run_whisper_e2e == true
     runs-on: [self-hosted, Linux, X64, fedora, nobara]
     continue-on-error: true # Don't fail CI if this fails
     env:
@@ -186,6 +240,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ steps.rust-version.outputs.version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
       
       - name: Setup Whisper model
         id: setup
@@ -196,8 +256,9 @@ jobs:
           WHISPER_MODEL_PATH: ${{ steps.setup.outputs.model_path }}
           WHISPER_MODEL_SIZE: ${{ steps.setup.outputs.model_size }}
         run: |
-          pip install faster-whisper
-          export PYTHONPATH=$(python3 -c "import site; print(site.getsitepackages()[0])")
+          uv venv .venv --python 3.12
+          uv sync --locked
+          export PYTHONPATH=$(uv run --with faster-whisper python -c "import site; print(site.getsitepackages()[0])")
           cargo test -p coldvox-app --test golden_master -- --nocapture
       
       - name: Skip Whisper E2E

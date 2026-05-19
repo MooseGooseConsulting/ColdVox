@@ -1,19 +1,33 @@
 name: Docs Validation
 
+# Docs-only PRs should not trigger Rust workspace builds. This workflow is the
+# hosted, path-filtered docs gate; it avoids automatic external LLM calls so it
+# remains deterministic and does not depend on unavailable secrets.
+
 on:
   pull_request:
+    branches: [main, tauri-base]
     paths:
       - 'docs/**'
       - '.github/workflows/docs-ci.yml'
       - 'scripts/docs_revision_logger.py'
       - 'scripts/build_docs_index.py'
       - 'scripts/docs_semantic_review.py'
+      - 'scripts/validate_domain_docs_naming.py'
       - '**/*.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
     name: Validate documentation changes
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -27,14 +41,19 @@ jobs:
           python-version: '3.12'
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
       
       - name: Create virtual environment
         run: |
           uv venv .venv --python 3.12
-          uv sync
+          uv sync --locked
+
+      - name: Validate domain documentation naming
+        run: |
+          uv run scripts/validate_domain_docs_naming.py
 
       - name: Build semantic docs review packet (advisory)
         run: |
@@ -47,19 +66,10 @@ jobs:
           path: .artifacts/docs_semantic_review_*
           if-no-files-found: warn
 
-      - name: Run semantic docs judge (OpenAI-compatible, advisory)
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
-          OPENAI_MODEL: ${{ vars.DOCS_REVIEW_MODEL }}
+      - name: Semantic docs judge disabled in default hosted CI
         run: |
-          uv run scripts/docs_semantic_review.py "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" \
-            --packet-out .artifacts/docs_semantic_review_packet.json \
-            --prompt-out .artifacts/docs_semantic_review_prompt.md \
-            --run-openai \
-            --allow-missing-openai-key \
-            --llm-output .artifacts/docs_semantic_review_result.json \
-            --fail-on none
+          echo "Semantic review packet is uploaded for explicit human/agent review."
+          echo "Skipping OpenAI-compatible judge in default CI to avoid secret-dependent hosted minute burn."
 
       - name: Regenerate docs index and enforce commit
         run: |

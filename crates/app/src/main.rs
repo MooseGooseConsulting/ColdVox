@@ -167,6 +167,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .runtime_plugin_selection()
             .map_err(std::io::Error::other)?,
     );
+    #[cfg(feature = "http-remote")]
+    let http_remote_config = Some(settings.runtime_http_remote_config());
 
     let device = settings.device.clone();
     let resampler_quality = match settings.resampler_quality.to_lowercase().as_str() {
@@ -185,6 +187,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         resampler_quality,
         activation_mode,
         stt_selection,
+        #[cfg(feature = "http-remote")]
+        http_remote_config,
         enable_device_monitor: settings.enable_device_monitor,
         capture_buffer_samples: settings.audio.capture_buffer_samples,
         ..Default::default()

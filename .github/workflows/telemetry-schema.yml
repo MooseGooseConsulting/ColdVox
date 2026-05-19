@@ -3,7 +3,7 @@ name: Telemetry Schema Check
 
 on:
   push:
-    branches: [main, feature/*, feat/*, fix/*]
+    branches: [main, tauri-base]
     paths:
       - 'crates/coldvox-telemetry/**'
       - 'crates/coldvox-stt/**'
@@ -11,7 +11,7 @@ on:
       - 'crates/coldvox-vad/**'
       - 'scripts/validate_telemetry_schema.py'
   pull_request:
-    branches: [main]
+    branches: [main, tauri-base]
     paths:
       - 'crates/coldvox-telemetry/**'
       - 'crates/coldvox-stt/**'
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: telemetry-schema-${{ github.ref }}
+  group: telemetry-schema-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

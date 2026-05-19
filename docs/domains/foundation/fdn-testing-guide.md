@@ -5,7 +5,7 @@ status: active
 freshness: current
 preservation: preserve
 domain_code: fdn
-last_reviewed: 2026-04-17
+last_reviewed: 2026-05-19
 owners: Documentation Working Group
 version: 1.0.0
 ---
@@ -14,7 +14,7 @@ version: 1.0.0
 
 ## Current Gate
 
-For this wave, the authoritative gate is local Windows validation. CI is not the gate.
+The authoritative gate for the Windows runtime path is local Windows validation. CI is supporting signal, not the release gate.
 
 On Windows, `just test` runs the required Windows-safe matrix. It does not call `cargo test --workspace --locked`, because the wider workspace still pulls in non-Windows members that are not a useful Windows correctness signal.
 
@@ -26,16 +26,17 @@ On Windows, `just test` runs the required Windows-safe matrix. It does not call 
 - `cargo test -p coldvox-audio --lib --locked`
 - `cargo test -p coldvox-vad --lib --locked`
 - `cargo test -p coldvox-telemetry --lib --locked`
-- `cargo test -p coldvox-stt --lib --no-default-features --features parakeet --locked`
+- `cargo test -p coldvox-stt --lib --no-default-features --features http-remote --locked`
 - `cargo test -p coldvox-gui --lib --locked`
 - `cargo test -p coldvox-text-injection --lib --locked`
 - `cargo test -p coldvox-text-injection --example test_enigo_live --no-run --no-default-features --features enigo --locked`
+- `cargo test -p coldvox-app --lib --features http-remote --locked`
 - `cargo test -p coldvox-app --test settings_test --locked`
 - `cargo test -p coldvox-app --test verify_mock_injection_fix --locked`
-- `cargo test -p coldvox-app --test golden_master --no-run --no-default-features --features parakeet,silero,text-injection-enigo --locked`
+- `cargo test -p coldvox-app --test golden_master --no-run --features http-remote,text-injection-enigo --locked`
 - `just windows-smoke`
 
-## Optional Live GPU Gate
+## Optional Live Runtime Gate
 
 The live runtime is optional during the default test gate and is controlled by one opt-in variable:
 
@@ -51,24 +52,32 @@ Windows injector path is exercised, not just compiled.
 ## Direct Validation Commands
 
 ```powershell
+just parakeet-up
+just parakeet-health
+just parakeet-validate
 just windows-run-preflight
 just windows-smoke
 just windows-live
 ```
 
+`just parakeet-validate` is the local, GitHub-Actions-free validation path for the canonical Parakeet HTTP container. It brings up `parakeet-cpu`, waits for `http://localhost:5092/health`, and runs the ignored HTTP-remote live integration tests against `crates/app/test_data/test_1.wav`.
+
 ## Live Prerequisites
 
 - Windows 11
-- NVIDIA GPU with working CUDA support
-- A downloaded local Parakeet model directory available through either the standard discovery roots or `PARAKEET_MODEL_PATH`
+- Docker Desktop running
+- The `parakeet-cpu` service from `ops/parakeet/docker-compose.yml` on `http://localhost:5092`
+- A microphone-capable local machine or hardware-capable runner only when manually exercising live microphone behavior
 
-If the Parakeet model is missing, `just windows-run-preflight` and `just windows-live` fail early with a prerequisite error instead of failing later during plugin startup.
+The Parakeet HTTP/container path owns model provisioning inside the Docker volume, so `PARAKEET_MODEL_PATH` is not required for the canonical Windows live path. The old in-process/local-model Parakeet path remains outside this gate.
 
 ## Notes
 
 - The checked-in default config stays on `mock` so tests remain deterministic.
-- The Windows live path opts into `config/windows-parakeet.toml`.
-- `coldvox-gui` is only a stub smoke target for this wave.
+- `config/plugins.json` is plugin-manager persistence, not the startup selector for normal runs.
+- The preferred live-capable STT route is the containerized Parakeet HTTP path on `localhost:5092`, selected explicitly through `config/windows-parakeet.toml`, env overrides such as `COLDVOX__STT__PREFERRED=http-remote`, and the `parakeet-*` / `windows-*` just recipes.
+- Automated validation does not require user speech input; manual microphone quality checks should be documented separately with their artifact path.
+- `coldvox-gui` is only a stub smoke target; Tauri GUI work belongs on `tauri-base`.
 - The required matrix compiles `golden_master` with the real Windows feature
   set, but it does not treat that test as a required runtime signal yet because
   the fixture is not a reliable Parakeet-on-Windows validation path.

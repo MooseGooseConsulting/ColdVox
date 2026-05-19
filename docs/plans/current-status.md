@@ -10,9 +10,10 @@ Audited April 17, 2026.
 
 ## Branch Strategy
 
-- `main` is the branch to build on.
+- `main` is the production trunk.
+- `tauri-base` is the GUI integration trunk. Work touching Tauri, GUI integration, or Windows GUI validation should target `tauri-base` first.
+- Do not open `tauri-base` -> `main` promotion PRs unless that promotion is explicitly requested.
 - The older Qt remediation line from closed PR `#389` is not a valid base for new work.
-- New stacked work should start from `origin/main` or from the latest intentional stack tip built on `main`.
 
 ## Windows Runtime Reality
 
@@ -23,7 +24,7 @@ Audited April 17, 2026.
 
 ## Validation Reality
 
-- The authoritative gate for this wave is local Windows validation, not CI.
+- The authoritative gate for the Windows runtime path is local Windows validation, not CI.
 - `just windows-run-preflight` checks GPU/CUDA prerequisites and the local Parakeet model requirement.
 - `just windows-smoke` validates CLI help, device enumeration, and the GUI stub smoke path.
 - `just test` runs the Windows-safe required matrix on Windows and keeps the live runtime behind `COLDVOX_RUN_WINDOWS_LIVE=1`.
@@ -31,7 +32,7 @@ Audited April 17, 2026.
 
 ## GUI Reality
 
-- `coldvox-gui` is not the shipped Windows path for this wave.
+- `coldvox-gui` is not the shipped Windows path.
 - `cargo run -p coldvox-gui` is kept only as a stub smoke check.
 
 ## Known Live Blocker

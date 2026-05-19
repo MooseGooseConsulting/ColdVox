@@ -5,7 +5,7 @@ status: active
 freshness: current
 preservation: reference
 summary: Branching strategy, automerge policy, and self-hosted vs GitHub-hosted CI split
-last_reviewed: 2026-04-10
+last_reviewed: 2026-05-19
 owners: Documentation Working Group
 version: 2.0.0
 ---
@@ -65,22 +65,22 @@ CodeRabbit's configuration is **global** (managed in the CodeRabbit web dashboar
 
 ## Runner Architecture
 
-> **Principle**: The laptop only does what only the laptop can do.
+> **Principle**: GitHub-hosted runners only do cheap deterministic gates; heavy
+> Rust, container, and live/hardware coverage runs on self-hosted capacity or by
+> explicit manual dispatch.
 
 ## Overview
 
-ColdVox CI splits workloads between GitHub-hosted and self-hosted runners based on one question:
+ColdVox CI splits workloads between GitHub-hosted and self-hosted runners using two questions:
 
-**Does this task require the physical laptop's hardware (display, audio, clipboard)?**
+1. **Is this cheap enough to spend hosted minutes on every PR?**
+2. **Does this task require local hardware, containers, or a warm Rust build cache?**
 
 | Requires Laptop? | Task | Runner |
 |------------------|------|--------|
-| No | `cargo fmt --check` | GitHub-hosted |
-| No | `cargo clippy` | GitHub-hosted |
-| No | `cargo audit`, `cargo deny` | GitHub-hosted |
-| No | `cargo build` | GitHub-hosted |
-| No | `cargo test --workspace` (unit tests) | GitHub-hosted |
-| **Yes** | Hardware tests (display, audio, clipboard) | Self-hosted |
+| No | Repo integrity, `cargo fmt --check`, docs validation, telemetry schema | GitHub-hosted, path-filtered |
+| No, but heavyweight | Workspace `cargo check`, `cargo build`, `cargo clippy`, `cargo doc`, `cargo test --workspace` | Self-hosted Fedora/Nobara or manual/nightly full CI |
+| **Yes** | Hardware/live tests (display, audio, clipboard) and container-backed Parakeet integration | Self-hosted, manual `workflow_dispatch` unless explicitly scheduled |
 
 ### Windows CI (Planned)
 
@@ -88,8 +88,8 @@ ColdVox targets Windows via Tauri GUI. Linux-only CI is insufficient — Windows
 
 | Runner | Purpose | Minute cost |
 |--------|---------|-------------|
-| GitHub-hosted Linux (`ubuntu-latest`) | Repo integrity, docs, lightweight checks | 1x |
-| Self-hosted Linux (Nobara laptop) | Cargo build/test/lint, hardware tests | 0 (free) |
+| GitHub-hosted Linux (`ubuntu-latest`) | Repo integrity, rustfmt, docs, telemetry schema, branch/label gates | 1x, path-filtered and concurrency-cancelled |
+| Self-hosted Linux (Nobara laptop) | Cargo build/test/clippy/doc, hardware tests, container/live validation | 0 (free) |
 | **Self-hosted Windows (planned)** | **Windows build, Tauri GUI tests, platform checks** | **0 (free)** |
 
 **Status**: Self-hosted Windows runner setup is pending. See TODO in project tracking.
@@ -100,10 +100,10 @@ ColdVox targets Windows via Tauri GUI. Linux-only CI is insufficient — Windows
 
 ### 1. Hardware Isolation
 
-The self-hosted runner is a laptop with **weak hardware but a live display**. GitHub-hosted runners have **powerful hardware but no display**.
+The self-hosted runner is a laptop with **weak hardware but a live display**. GitHub-hosted runners have **powerful hardware but billable minutes**.
 
-- **Laptop**: Only runs tests that need real display/audio/clipboard
-- **GitHub**: Handles everything else (lint, security, build, unit tests)
+- **Laptop/self-hosted**: Runs heavyweight Rust compilation/tests plus any real display/audio/clipboard/container coverage.
+- **GitHub-hosted**: Runs only cheap deterministic gates such as repo integrity, rustfmt, docs validation, telemetry schema checks, and branch/label automation.
 
 ### 2. Parallelism
 
@@ -111,15 +111,16 @@ GitHub-hosted jobs run in parallel on separate machines. Self-hosted queues on o
 
 ```
 Push PR:
-  GitHub:      [lint] [security] [docs] [build+unit-tests]  ← All parallel
-  Self-hosted: [hardware tests]                              ← Only hardware-dependent tests
+  GitHub:      [repo integrity] [rustfmt] [docs/telemetry if path-matched]
+  Self-hosted: [cargo check/build] [clippy+doc] [unit tests]
+  Manual:      [live text injection] [Whisper golden master] [Parakeet container]
 
-Total time: max(GitHub jobs, hardware tests)
+Hosted spend stays bounded by the cheap path-filtered jobs; heavyweight jobs queue on free self-hosted capacity.
 ```
 
 ### 3. No Wasted Work
 
-The laptop does minimal work - just the tests that *require* hardware access.
+Docs-only changes do not start the Rust workspace build/test pipeline. Feature-branch pushes do not start hosted CI; opening or updating a PR into `main` or `tauri-base` does.
 
 ---
 
@@ -142,8 +143,20 @@ The laptop does minimal work - just the tests that *require* hardware access.
 | `GabrielBB/xvfb-action` | Internally calls `apt-get` (doesn't exist) |
 | `sudo apt-get install` | Wrong package manager |
 | `DISPLAY=:99` | Conflicts with real display (`:0`) |
-| Running builds on self-hosted | Weak hardware; GitHub-hosted is faster |
-| Running unit tests on self-hosted | Wastes limited resources |
+| Moving heavyweight builds/tests back to hosted runners | Burns billable minutes on every PR |
+| Running live/hardware tests on hosted runners | Hosted runners lack the required display/audio/clipboard devices |
+
+### Current Burn-Down Guardrails
+
+Wave 1 burn-down keeps default PR CI cheap and avoids stale Linux display setup:
+
+- Workflow concurrency groups are workflow-specific (`ci-full-*`, `ci-minimal-*`, `docs-ci-*`) so one workflow does not cancel another on the same ref.
+- `ci-minimal.yml` is the default branch/PR gate for `main` and `tauri-base`; feature-branch pushes do not spend hosted minutes, but PRs into either trunk still validate.
+- Docs-only PRs route to `docs-ci.yml`; Rust workspace builds/tests are path-filtered out unless code/config/CI inputs changed.
+- `ci.yml` is full/nightly validation only (`workflow_dispatch` or schedule). It is not a broad push/PR trigger.
+- Default PR CI does not hydrate Whisper models or install Faster-Whisper. Whisper golden-master coverage is quarantined to nightly/manual live-runner paths.
+- Self-hosted Fedora/Nobara jobs must use the live desktop session provided by the runner. They must not start Xvfb or force `DISPLAY=:99`.
+- Expensive AI/docs review workflows remain advisory/shadow mode. Default hosted docs CI uploads the deterministic semantic packet and skips external LLM calls unless a human/agent explicitly runs them outside the default gate.
 
 ---
 
@@ -152,22 +165,14 @@ The laptop does minimal work - just the tests that *require* hardware access.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      GITHUB-HOSTED (ubuntu-latest)              │
-│              Parallel, powerful, handles most work              │
+│             Cheap, path-filtered, billable-minute work          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │    lint     │  │  security   │  │    docs     │             │
-│  │             │  │             │  │             │             │
-│  │ fmt --check │  │ cargo audit │  │  cargo doc  │             │
-│  │ clippy      │  │ cargo deny  │  │             │             │
-│  │  ~2 min     │  │  ~2 min     │  │  ~2 min     │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              build_and_unit_tests                        │   │
-│  │  cargo check → cargo build → cargo test --workspace      │   │
-│  │  ~10-15 min                                              │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐   │
+│  │ repo checks  │ │ rustfmt      │ │ docs / telemetry     │   │
+│  │ mechanical   │ │ fmt --check  │ │ path-matched only    │   │
+│  │ no full test │ │ no build     │ │ no LLM by default    │   │
+│  └──────────────┘ └──────────────┘ └──────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
               ║                            
@@ -175,24 +180,13 @@ The laptop does minimal work - just the tests that *require* hardware access.
               ║                            
 ┌─────────────────────────────────────────────────────────────────┐
 │                 SELF-HOSTED (Fedora/Nobara)                     │
-│        Weak hardware BUT has live KDE Plasma display            │
+│         Free minutes, warm Rust cache, live desktop             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   hardware_tests                         │   │
-│  │                                                          │   │
-│  │  Environment:                                            │   │
-│  │  • DISPLAY=:0 (live session, NOT :99)                   │   │
-│  │  • WAYLAND_DISPLAY=wayland-0                            │   │
-│  │  • Real audio, real clipboard                           │   │
-│  │                                                          │   │
-│  │  Tests:                                                  │   │
-│  │  • real-injection-tests (xdotool, ydotool, clipboard)   │   │
-│  │  • hardware_check (audio capture, display access)       │   │
-│  │                                                          │   │
-│  │  Total: ~5-10 min (minimal work!)                       │   │
-│  │                                                          │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────┐ ┌──────────────────┐ ┌───────────────┐  │
+│  │ cargo check/build│ │ clippy/doc/tests │ │ manual live    │  │
+│  │ default PR gate  │ │ default PR gate  │ │ Whisper/Parakeet│  │
+│  └──────────────────┘ └──────────────────┘ └───────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               │

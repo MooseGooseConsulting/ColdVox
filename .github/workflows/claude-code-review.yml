@@ -2,21 +2,46 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [labeled, ready_for_review, reopened]
+    paths:
+      - ".github/workflows/**"
+      - "config/**"
+      - "crates/**"
+      - "docs/architecture.md"
+      - "docs/reference/**"
+      - "scripts/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: number
+
+concurrency:
+  group: claude-code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Cost gate: automatic PR review requires the `ai-review` label and is never
+    # triggered by synchronize. Comments (`/claude-review`) and manual dispatch
+    # remain explicit opt-ins.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '/claude-review')
+      ) ||
+      (
+        github.event_name == 'pull_request' &&
+        !github.event.pull_request.draft &&
+        contains(github.event.pull_request.labels.*.name, 'ai-review')
+      )
 
     runs-on: ubuntu-latest
     permissions:
@@ -38,7 +63,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || github.event.issue.number || inputs.pr_number }}'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
