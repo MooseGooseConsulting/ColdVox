@@ -74,6 +74,9 @@ pub struct AppRuntimeOptions {
     pub vad_config: Option<coldvox_vad::config::UnifiedVadConfig>,
     /// STT plugin selection configuration
     pub stt_selection: Option<coldvox_stt::plugin::PluginSelectionConfig>,
+    /// Runtime HTTP remote profile configuration.
+    #[cfg(feature = "http-remote")]
+    pub http_remote_config: Option<coldvox_stt::plugins::http_remote::HttpRemoteConfig>,
 
     pub injection: Option<InjectionOptions>,
     /// Whether to poll for device hotplug events (ALSA/CPAL enumeration)
@@ -88,11 +91,15 @@ pub struct AppRuntimeOptions {
 
 impl std::fmt::Debug for AppRuntimeOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AppRuntimeOptions")
+        let mut debug = f.debug_struct("AppRuntimeOptions");
+        debug
             .field("device", &self.device)
             .field("resampler_quality", &self.resampler_quality)
             .field("activation_mode", &self.activation_mode)
-            .field("stt_selection", &self.stt_selection)
+            .field("stt_selection", &self.stt_selection);
+        #[cfg(feature = "http-remote")]
+        debug.field("http_remote_config", &self.http_remote_config);
+        debug
             .field("injection", &self.injection)
             .field("enable_device_monitor", &self.enable_device_monitor)
             .field("capture_buffer_samples", &self.capture_buffer_samples)
@@ -115,6 +122,8 @@ impl Default for AppRuntimeOptions {
             activation_mode: ActivationMode::Vad,
             vad_config: None, // Use VAD defaults
             stt_selection: None,
+            #[cfg(feature = "http-remote")]
+            http_remote_config: None,
 
             injection: None,
             enable_device_monitor: false,
@@ -493,8 +502,12 @@ pub async fn start(
         if opts.stt_selection.is_some() {
             let metrics_clone = metrics.clone();
             let mut manager = SttPluginManager::new().with_metrics_sink(metrics_clone);
+            #[cfg(feature = "http-remote")]
+            if let Some(config) = opts.http_remote_config.clone() {
+                manager.configure_http_remote_factory(config).await;
+            }
             if let Some(config) = opts.stt_selection.clone() {
-                manager.set_selection_config(config).await?;
+                manager.set_runtime_selection_config(config).await?;
             }
             // Initialize the plugin manager; enforce fail-fast semantics when no STT plugin is available
             match manager.initialize().await {
@@ -772,6 +785,113 @@ pub async fn start(
         stt_forward_handle,
         injection_handle,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "http-remote")]
+    use coldvox_stt::plugin::PluginSelectionConfig;
+    #[cfg(feature = "http-remote")]
+    use coldvox_stt::plugins::http_remote::HttpRemoteConfig;
+    #[cfg(feature = "http-remote")]
+    use serial_test::serial;
+    #[cfg(feature = "http-remote")]
+    use std::ffi::OsString;
+    #[cfg(feature = "http-remote")]
+    use std::path::Path;
+
+    #[cfg(feature = "http-remote")]
+    struct EnvVarGuard {
+        key: &'static str,
+        previous: Option<OsString>,
+    }
+
+    #[cfg(feature = "http-remote")]
+    impl EnvVarGuard {
+        fn set_path(key: &'static str, value: &Path) -> Self {
+            let previous = std::env::var_os(key);
+            std::env::set_var(key, value);
+            Self { key, previous }
+        }
+    }
+
+    #[cfg(feature = "http-remote")]
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            if let Some(previous) = self.previous.take() {
+                std::env::set_var(self.key, previous);
+            } else {
+                std::env::remove_var(self.key);
+            }
+        }
+    }
+
+    #[cfg(feature = "http-remote")]
+    #[tokio::test]
+    #[serial]
+    async fn start_uses_runtime_http_remote_config_without_rewriting_plugin_persistence() {
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let plugin_config_path = temp.path().join("plugins.json");
+        let persisted_config = r#"{
+  "preferred_plugin": "mock",
+  "fallback_plugins": [],
+  "require_local": false,
+  "max_memory_mb": null,
+  "required_language": "en",
+  "failover": null,
+  "gc_policy": null,
+  "metrics": null,
+  "auto_extract_model": true
+}"#;
+        std::fs::write(&plugin_config_path, persisted_config).expect("write plugin config");
+        let _plugin_config_guard = EnvVarGuard::set_path("COLDVOX_PLUGIN_CONFIG_PATH", &plugin_config_path);
+
+        let mut remote = HttpRemoteConfig::canonical_parakeet_cpu();
+        remote.profile_id = Some("runtime-custom".to_string());
+        remote.base_url = "http://127.0.0.1:5099".to_string();
+        remote.display_name = "Runtime Custom Parakeet (HTTP)".to_string();
+
+        let opts = AppRuntimeOptions {
+            activation_mode: ActivationMode::Vad,
+            stt_selection: Some(PluginSelectionConfig {
+                preferred_plugin: Some("http-remote-runtime-custom".to_string()),
+                fallback_plugins: vec![],
+                require_local: false,
+                max_memory_mb: None,
+                required_language: Some("en".to_string()),
+                failover: None,
+                gc_policy: None,
+                metrics: None,
+                auto_extract_model: true,
+            }),
+            http_remote_config: Some(remote),
+            test_capture_to_dummy: true,
+            enable_device_monitor: false,
+            ..Default::default()
+        };
+
+        let app = start(opts).await.expect("start runtime with custom HTTP profile");
+        let selected_plugin = app
+            .plugin_manager
+            .as_ref()
+            .expect("plugin manager enabled")
+            .read()
+            .await
+            .current_plugin()
+            .await;
+        assert_eq!(
+            selected_plugin.as_deref(),
+            Some("http-remote-runtime-custom")
+        );
+
+        std::sync::Arc::new(app).shutdown().await;
+
+        let persisted_after =
+            std::fs::read_to_string(&plugin_config_path).expect("read plugin config after start");
+        assert_eq!(persisted_after, persisted_config);
+    }
 }
 
 // Integration tests for the STT pipeline live in tests/.
