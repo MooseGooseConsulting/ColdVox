@@ -108,7 +108,7 @@ windows-test:
     just windows-smoke
     if ($env:COLDVOX_RUN_WINDOWS_LIVE -eq '1') { cargo run -p coldvox-text-injection --example test_enigo_live --no-default-features --features enigo --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; just windows-live; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } else { Write-Host 'Skipping live Windows validation; set COLDVOX_RUN_WINDOWS_LIVE=1 to run the Enigo example and just windows-live.' -ForegroundColor Yellow }
 
-# Run main app with the canonical wave-1 HTTP remote profile
+# Run main app with the canonical Windows HTTP remote profile
 run:
     #!/usr/bin/env pwsh
     if ($IsWindows) {
@@ -117,7 +117,7 @@ run:
     }
     cargo run -p coldvox-app --bin coldvox --features http-remote,text-injection
 
-# Run TUI dashboard with the canonical wave-1 HTTP remote profile
+# Run TUI dashboard with the canonical Windows HTTP remote profile
 tui:
     #!/usr/bin/env pwsh
     if ($IsWindows) {

@@ -131,11 +131,11 @@ Additional artifacts are produced only by the `Live` mode:
 
 ## Review / Merge Protocol
 
-For this wave, local artifacts are the review gate.
+Local artifacts are the review gate for the Windows runtime path.
 
 1. Run the relevant local Windows commands and keep the artifact path.
 2. Put the exact commands, container assumptions, and artifact path in the PR description.
 3. Wait 5 minutes for review comments before merging.
 4. Re-run the relevant local gate after addressing review feedback.
 
-CI is not the release gate for this wave.
+CI is supporting signal; local Windows validation is the release gate.

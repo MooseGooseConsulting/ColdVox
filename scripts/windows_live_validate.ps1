@@ -176,6 +176,48 @@ function Copy-RuntimeLog {
     Get-Content $LogPath | Select-Object -Last 120 | Set-Content (Join-Path $ArtifactRoot 'coldvox.log.tail') -Encoding UTF8
 }
 
+function Assert-LiveEvidencePattern {
+    param(
+        [string]$Content,
+        [string]$Pattern,
+        [string]$Description
+    )
+
+    if ($Content -notmatch $Pattern) {
+        throw "Live runtime evidence missing: $Description. Pattern: $Pattern"
+    }
+}
+
+function Assert-LiveRuntimeEvidence {
+    param(
+        [object]$Live
+    )
+
+    $stderrContent = ''
+    if (Test-Path $Live.StderrPath) {
+        $stderrContent = Get-Content $Live.StderrPath -Raw
+    }
+
+    $runtimeLogContent = ''
+    if (Test-Path $LogPath) {
+        $runtimeLogContent = Get-Content $LogPath -Raw
+    }
+
+    $evidence = "$stderrContent`n$runtimeLogContent"
+
+    Assert-LiveEvidencePattern $evidence 'Application state: Running' 'application reached running state'
+    Assert-LiveEvidencePattern $evidence 'Audio stream started on device' 'audio capture stream started'
+    Assert-LiveEvidencePattern $evidence 'VAD processor task started' 'VAD processor started'
+    Assert-LiveEvidencePattern $evidence '(Using preferred STT plugin.*http-remote|STT initialized with plugin.*http-remote|selected_plugin.*http-remote)' 'http-remote STT plugin selected'
+    Assert-LiveEvidencePattern $evidence '(Injection processor started|Selected backend: WindowsSendInput)' 'Windows injection path initialized'
+    Assert-LiveEvidencePattern $evidence 'pipeline components initialized.*capture=true.*stt=true' 'runtime pipeline initialized capture through STT'
+
+    [pscustomobject]@{
+        EvidencePath = $Live.StderrPath
+        RuntimeLogPresent = (Test-Path $LogPath)
+    }
+}
+
 function Invoke-Preflight {
     Write-Step 'preflight'
     New-ArtifactDirectories
@@ -293,14 +335,36 @@ function Invoke-Live {
     $smoke = Invoke-Smoke
     Set-RunEnvironment
 
-    Invoke-LoggedProcess -Name 'coldvox-build' -FilePath 'cargo' -ArgumentList @(
+    $wiring = Invoke-LoggedProcess -Name 'app-http-remote-wiring-live' -FilePath 'cargo' -ArgumentList @(
+        'test',
+        '-p', 'coldvox-app',
+        '--features', 'http-remote',
+        '--test', 'http_remote_wiring_live',
+        '--locked',
+        '--',
+        '--ignored',
+        '--nocapture'
+    ) -TimeoutSeconds 240
+
+    $micProbe = Invoke-LoggedProcess -Name 'mic-capture-probe' -FilePath 'cargo' -ArgumentList @(
+        'run',
+        '-p', 'coldvox-app',
+        '--bin', 'mic_probe',
+        '--quiet',
+        '--locked',
+        '--',
+        'mic-capture',
+        '--duration', '5'
+    ) -TimeoutSeconds 60
+
+    $build = Invoke-LoggedProcess -Name 'coldvox-build' -FilePath 'cargo' -ArgumentList @(
         'build',
         '-p', 'coldvox-app',
         '--bin', 'coldvox',
         '--features', $FeatureList,
         '--quiet',
         '--locked'
-    ) | Out-Null
+    )
 
     try {
         $live = Invoke-LoggedProcess -Name 'coldvox-live' -FilePath 'cargo' -ArgumentList @(
@@ -319,6 +383,8 @@ function Invoke-Live {
         throw "Live runtime exited early with code $($live.ExitCode)."
     }
 
+    $runtimeEvidence = Assert-LiveRuntimeEvidence -Live $live
+
     @(
         'ColdVox Windows HTTP remote validation'
         "Timestamp: $Timestamp"
@@ -334,8 +400,13 @@ function Invoke-Live {
         "help exit code: $($smoke.Help.ExitCode)"
         "list-devices exit code: $($smoke.Devices.ExitCode)"
         "gui smoke exit code: $($smoke.Gui.ExitCode)"
+        "app http remote wiring live exit code: $($wiring.ExitCode)"
+        "mic capture probe exit code: $($micProbe.ExitCode)"
+        "build exit code: $($build.ExitCode)"
         "live exit code: $($live.ExitCode)"
         "live timed out: $($live.TimedOut)"
+        "runtime evidence path: $($runtimeEvidence.EvidencePath)"
+        "runtime log present: $($runtimeEvidence.RuntimeLogPresent)"
         "coldvox.log: $(Join-Path $ArtifactRoot 'coldvox.log')"
         "coldvox.log tail: $(Join-Path $ArtifactRoot 'coldvox.log.tail')"
     ) | Set-Content -Path (Join-Path $ArtifactRoot 'summary.txt') -Encoding UTF8
