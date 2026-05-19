@@ -67,6 +67,22 @@ windows-smoke:
 windows-live:
     pwsh -NoProfile -File scripts/windows_live_validate.ps1 -Mode Live
 
+# Canonical Parakeet HTTP container lifecycle for local/live STT development
+parakeet-up:
+    docker compose -f ops/parakeet/docker-compose.yml up -d parakeet-cpu
+
+parakeet-down:
+    docker compose -f ops/parakeet/docker-compose.yml down
+
+parakeet-health:
+    pwsh -NoProfile -Command '$ErrorActionPreference = "Stop"; $r = Invoke-RestMethod -Uri "http://localhost:5092/health" -TimeoutSec 10; if ($r.status -ne "ok") { throw "Unexpected Parakeet health response: $($r | ConvertTo-Json -Compress)" }; $r | ConvertTo-Json -Compress'
+
+parakeet-logs tail="200":
+    docker compose -f ops/parakeet/docker-compose.yml logs --tail={{tail}} parakeet-cpu
+
+parakeet-validate:
+    pwsh -NoProfile -File scripts/integration_parakeet.ps1
+
 # Live integration tests against the parakeet-cpu HTTP container.
 # Brings the container up via docker compose, waits for /health, then runs
 # both the plugin-level and the app-level wiring tests with -- --ignored.
