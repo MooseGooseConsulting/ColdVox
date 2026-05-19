@@ -69,16 +69,16 @@ windows-live:
 
 # Canonical Parakeet HTTP container lifecycle for local/live STT development
 parakeet-up:
-    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Up
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Up }"
 
 parakeet-down:
-    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Down
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Down }"
 
 parakeet-health:
-    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Health
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Health }"
 
 parakeet-logs tail="200":
-    pwsh -NoProfile -File scripts/parakeet_http.ps1 -Action Logs -Tail {{tail}}
+    pwsh -NoProfile -Command "& { .\scripts\parakeet_http.ps1 -Action Logs -Tail {{tail}} }"
 
 parakeet-validate:
     pwsh -NoProfile -File scripts/integration_parakeet.ps1
