@@ -5,7 +5,7 @@ status: active
 freshness: current
 preservation: reference
 summary: Branching strategy, automerge policy, and self-hosted vs GitHub-hosted CI split
-last_reviewed: 2026-04-10
+last_reviewed: 2026-05-19
 owners: Documentation Working Group
 version: 2.0.0
 ---
@@ -144,6 +144,15 @@ The laptop does minimal work - just the tests that *require* hardware access.
 | `DISPLAY=:99` | Conflicts with real display (`:0`) |
 | Running builds on self-hosted | Weak hardware; GitHub-hosted is faster |
 | Running unit tests on self-hosted | Wastes limited resources |
+
+### Current Burn-Down Guardrails
+
+Wave 1 burn-down keeps default PR CI cheap and avoids stale Linux display setup:
+
+- Workflow concurrency groups are workflow-specific (`ci-full-*`, `ci-minimal-*`, `docs-ci-*`) so one workflow does not cancel another on the same ref.
+- Default PR CI does not hydrate Whisper models or install Faster-Whisper. Whisper golden-master coverage is quarantined to nightly/manual live-runner paths.
+- Self-hosted Fedora/Nobara jobs must use the live desktop session provided by the runner. They must not start Xvfb or force `DISPLAY=:99`.
+- Expensive AI review workflows remain advisory/shadow mode, but external model calls are explicit opt-ins or limited to moderate/complex PRs.
 
 ---
 

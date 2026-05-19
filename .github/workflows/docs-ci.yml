@@ -8,7 +8,12 @@ on:
       - 'scripts/docs_revision_logger.py'
       - 'scripts/build_docs_index.py'
       - 'scripts/docs_semantic_review.py'
+      - 'scripts/validate_domain_docs_naming.py'
       - '**/*.md'
+
+concurrency:
+  group: docs-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -27,14 +32,19 @@ jobs:
           python-version: '3.12'
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
       
       - name: Create virtual environment
         run: |
           uv venv .venv --python 3.12
-          uv sync
+          uv sync --locked
+
+      - name: Validate domain documentation naming
+        run: |
+          uv run scripts/validate_domain_docs_naming.py
 
       - name: Build semantic docs review packet (advisory)
         run: |

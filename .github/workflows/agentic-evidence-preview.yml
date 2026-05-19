@@ -3,19 +3,21 @@ name: "Agentic PR Reviewers (Shadow Mode)"
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize, ready_for_review, labeled]
     branches:
       - main
 
 # Shadow mode: all jobs are advisory only. They never block a PR.
 # All merge decisions remain with human reviewers.
+# Simple PRs only run the cheap complexity scorer by default. External model
+# reviewers run for moderate/complex PRs, or when `agentic-review` is labeled.
 
 permissions:
   contents: read
   pull-requests: read
 
 concurrency:
-  group: agentic-reviewers-${{ github.event.pull_request.number }}
+  group: agentic-reviewers-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -97,13 +99,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ────────────────────────────────────────────────────────────────────────────
-  # JOB 2: Evidence Assessor — Gemini Flash (always runs)
+  # JOB 2: Evidence Assessor — Gemini Flash (moderate/complex by default)
   # Asks: "Is this PR honest? Do its claims match what was actually changed?"
   # Uses gemini-3-flash-preview for cost and speed efficiency.
   # ────────────────────────────────────────────────────────────────────────────
   evidence-assessor:
-    name: "Evidence Assessor — Flash (shadow, always)"
+    name: "Evidence Assessor — Flash (shadow, moderate+)"
     needs: complexity-score
+    if: |
+      needs.complexity-score.outputs.tier != 'simple' ||
+      contains(github.event.pull_request.labels.*.name, 'agentic-review')
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -161,7 +166,7 @@ jobs:
             echo "## 🔍 Evidence Assessor — Gemini Flash (Shadow Mode)"
             echo ""
             echo "> **Shadow Mode** · Non-blocking · Advisory only · Does not gate merges"
-            echo "> Model: \`gemini-3-flash-preview\` · Runs on: all PRs"
+            echo "> Model: \`gemini-3-flash-preview\` · Runs on: moderate/complex PRs, or simple PRs labeled \`agentic-review\`"
             echo ""
             echo "---"
             echo ""
