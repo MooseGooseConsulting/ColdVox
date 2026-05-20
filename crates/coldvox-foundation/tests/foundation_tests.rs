@@ -5,7 +5,7 @@
 //! - Error types (ColdVoxError variants, AudioError, SttError, VadError, InjectionError)
 //! - Test environment utilities
 
-use coldvox_foundation::clock::{Clock, RealClock, TestClock, real_clock, test_clock};
+use coldvox_foundation::clock::{real_clock, test_clock, Clock, RealClock, TestClock};
 use coldvox_foundation::error::{
     AudioError, ColdVoxError, ConfigError, InjectionError, PluginError, SttError, VadError,
 };
@@ -91,7 +91,9 @@ fn test_clock_factory_function() {
 
 #[test]
 fn audio_error_device_not_found() {
-    let err = AudioError::DeviceNotFound { name: Some("test_mic".to_string()) };
+    let err = AudioError::DeviceNotFound {
+        name: Some("test_mic".to_string()),
+    };
     let msg = format!("{}", err);
     assert!(msg.contains("test_mic"));
 }
@@ -105,7 +107,9 @@ fn audio_error_buffer_overflow() {
 
 #[test]
 fn audio_error_format_not_supported() {
-    let err = AudioError::FormatNotSupported { format: "f64".to_string() };
+    let err = AudioError::FormatNotSupported {
+        format: "f64".to_string(),
+    };
     let msg = format!("{}", err);
     assert!(msg.contains("f64"));
 }
@@ -119,14 +123,19 @@ fn stt_error_transcription_failed() {
 
 #[test]
 fn stt_error_model_not_found() {
-    let err = SttError::ModelNotFound { path: "/models/whisper".into() };
+    let err = SttError::ModelNotFound {
+        path: "/models/whisper".into(),
+    };
     let msg = format!("{}", err);
     assert!(msg.contains("whisper"));
 }
 
 #[test]
 fn vad_error_invalid_frame_size() {
-    let err = VadError::InvalidFrameSize { expected: 512, actual: 256 };
+    let err = VadError::InvalidFrameSize {
+        expected: 512,
+        actual: 256,
+    };
     let msg = format!("{}", err);
     assert!(msg.contains("512"));
     assert!(msg.contains("256"));

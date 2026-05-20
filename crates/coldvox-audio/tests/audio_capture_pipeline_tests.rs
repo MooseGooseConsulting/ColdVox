@@ -190,7 +190,10 @@ fn silence_detector_sine_wave_detection() {
         })
         .collect();
 
-    assert!(!det.is_silence(&sine), "sine wave should not be detected as silence");
+    assert!(
+        !det.is_silence(&sine),
+        "sine wave should not be detected as silence"
+    );
 }
 
 #[test]
@@ -199,5 +202,8 @@ fn silence_detector_low_noise_floor() {
 
     // Very quiet noise (simulating mic self-noise)
     let noise: Vec<i16> = (0..512).map(|i| ((i % 7) as i16 - 3)).collect();
-    assert!(det.is_silence(&noise), "low-level noise should be detected as silence");
+    assert!(
+        det.is_silence(&noise),
+        "low-level noise should be detected as silence"
+    );
 }

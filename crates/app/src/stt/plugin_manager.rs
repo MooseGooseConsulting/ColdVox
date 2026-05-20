@@ -1624,7 +1624,10 @@ mod tests {
             .await
             .expect("apply runtime-only plugin selection");
 
-        assert_eq!(manager.selection_config.preferred_plugin.as_deref(), Some("mock"));
+        assert_eq!(
+            manager.selection_config.preferred_plugin.as_deref(),
+            Some("mock")
+        );
         let persisted_after =
             std::fs::read_to_string(&config_path).expect("read persisted plugin config");
         assert_eq!(persisted_after, persisted_config);

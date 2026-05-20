@@ -846,7 +846,8 @@ mod tests {
   "auto_extract_model": true
 }"#;
         std::fs::write(&plugin_config_path, persisted_config).expect("write plugin config");
-        let _plugin_config_guard = EnvVarGuard::set_path("COLDVOX_PLUGIN_CONFIG_PATH", &plugin_config_path);
+        let _plugin_config_guard =
+            EnvVarGuard::set_path("COLDVOX_PLUGIN_CONFIG_PATH", &plugin_config_path);
 
         let mut remote = HttpRemoteConfig::canonical_parakeet_cpu();
         remote.profile_id = Some("runtime-custom".to_string());
@@ -872,7 +873,9 @@ mod tests {
             ..Default::default()
         };
 
-        let app = start(opts).await.expect("start runtime with custom HTTP profile");
+        let app = start(opts)
+            .await
+            .expect("start runtime with custom HTTP profile");
         let selected_plugin = app
             .plugin_manager
             .as_ref()

@@ -7,11 +7,11 @@
 //! - VadConfig validation
 //! - Speech boundary detection accuracy
 
-use coldvox_vad::types::{VadConfig, VadEvent, VadState};
-use coldvox_vad::constants::{FRAME_SIZE_SAMPLES, SAMPLE_RATE_HZ, FRAME_DURATION_MS};
+use coldvox_vad::constants::{FRAME_DURATION_MS, FRAME_SIZE_SAMPLES, SAMPLE_RATE_HZ};
 use coldvox_vad::energy::EnergyCalculator;
 use coldvox_vad::state::VadStateMachine;
 use coldvox_vad::threshold::AdaptiveThreshold;
+use coldvox_vad::types::{VadConfig, VadEvent, VadState};
 
 // ─── Energy Calculator Tests ─────────────────────────────────────────
 
@@ -28,7 +28,11 @@ fn energy_full_scale_near_zero_dbfs() {
     let calc = EnergyCalculator::new();
     let full = vec![i16::MAX; FRAME_SIZE_SAMPLES];
     let db = calc.calculate_dbfs(&full);
-    assert!((db - 0.0).abs() < 0.1, "full scale should be ~0 dBFS, got {}", db);
+    assert!(
+        (db - 0.0).abs() < 0.1,
+        "full scale should be ~0 dBFS, got {}",
+        db
+    );
 }
 
 #[test]
@@ -44,7 +48,11 @@ fn energy_rms_sine_wave() {
     let rms = calc.calculate_rms(&sine);
     // Sine wave RMS = peak / sqrt(2) ≈ 0.707 * peak
     // 16384 / 32768 = 0.5, RMS ≈ 0.5 / sqrt(2) ≈ 0.354
-    assert!((rms - 0.354).abs() < 0.02, "sine wave RMS should be ~0.354, got {}", rms);
+    assert!(
+        (rms - 0.354).abs() < 0.02,
+        "sine wave RMS should be ~0.354, got {}",
+        rms
+    );
 }
 
 #[test]
@@ -62,7 +70,12 @@ fn energy_dbfs_monotonically_increases_with_amplitude() {
     for amplitude in [100, 500, 1000, 5000, 10000, 20000, 30000] {
         let frame = vec![amplitude as i16; FRAME_SIZE_SAMPLES];
         let db = calc.calculate_dbfs(&frame);
-        assert!(db > prev_db, "dBFS should increase with amplitude: {} dB at amplitude {}", db, amplitude);
+        assert!(
+            db > prev_db,
+            "dBFS should increase with amplitude: {} dB at amplitude {}",
+            db,
+            amplitude
+        );
         prev_db = db;
     }
 }
@@ -72,7 +85,10 @@ fn energy_ratio_positive_when_above_reference() {
     let calc = EnergyCalculator::new();
     let loud = vec![10000i16; FRAME_SIZE_SAMPLES];
     let ratio = calc.calculate_energy_ratio(&loud, -50.0);
-    assert!(ratio > 0.0, "energy ratio should be positive above reference");
+    assert!(
+        ratio > 0.0,
+        "energy ratio should be positive above reference"
+    );
 }
 
 #[test]
@@ -80,7 +96,10 @@ fn energy_ratio_negative_when_below_reference() {
     let calc = EnergyCalculator::new();
     let quiet = vec![10i16; FRAME_SIZE_SAMPLES];
     let ratio = calc.calculate_energy_ratio(&quiet, -10.0);
-    assert!(ratio < 0.0, "energy ratio should be negative below reference");
+    assert!(
+        ratio < 0.0,
+        "energy ratio should be negative below reference"
+    );
 }
 
 // ─── Adaptive Threshold Tests ────────────────────────────────────────
@@ -91,7 +110,7 @@ fn threshold_initialization_from_config() {
     let threshold = AdaptiveThreshold::new(&config);
 
     assert_eq!(threshold.current_floor(), -50.0);
-    assert_eq!(threshold.onset_threshold(), -50.0 + 9.0);  // -41.0
+    assert_eq!(threshold.onset_threshold(), -50.0 + 9.0); // -41.0
     assert_eq!(threshold.offset_threshold(), -50.0 + 6.0); // -44.0
 }
 
@@ -126,8 +145,8 @@ fn threshold_activation_detection() {
     let t = AdaptiveThreshold::new(&config);
 
     // onset_threshold = -50 + 9 = -41
-    assert!(t.should_activate(-40.0));   // above onset
-    assert!(!t.should_activate(-42.0));  // below onset
+    assert!(t.should_activate(-40.0)); // above onset
+    assert!(!t.should_activate(-42.0)); // below onset
 }
 
 #[test]
@@ -136,7 +155,7 @@ fn threshold_deactivation_detection() {
     let t = AdaptiveThreshold::new(&config);
 
     // offset_threshold = -50 + 6 = -44
-    assert!(t.should_deactivate(-45.0));  // below offset
+    assert!(t.should_deactivate(-45.0)); // below offset
     assert!(!t.should_deactivate(-43.0)); // above offset
 }
 
@@ -184,7 +203,7 @@ fn state_machine_starts_in_silence() {
 #[test]
 fn state_machine_transitions_to_speech_after_debounce() {
     let config = VadConfig {
-        speech_debounce_ms: 64,  // 2 frames at 32ms each
+        speech_debounce_ms: 64, // 2 frames at 32ms each
         ..Default::default()
     };
     let mut sm = VadStateMachine::new(&config);
@@ -208,8 +227,8 @@ fn state_machine_transitions_to_speech_after_debounce() {
 #[test]
 fn state_machine_transitions_to_silence_after_debounce() {
     let config = VadConfig {
-        speech_debounce_ms: 32,   // 1 frame
-        silence_debounce_ms: 64,  // 2 frames
+        speech_debounce_ms: 32,  // 1 frame
+        silence_debounce_ms: 64, // 2 frames
         ..Default::default()
     };
     let mut sm = VadStateMachine::new(&config);
@@ -236,8 +255,8 @@ fn state_machine_transitions_to_silence_after_debounce() {
 #[test]
 fn state_machine_speech_interrupted_by_brief_silence() {
     let config = VadConfig {
-        speech_debounce_ms: 32,   // 1 frame
-        silence_debounce_ms: 96,  // 3 frames
+        speech_debounce_ms: 32,  // 1 frame
+        silence_debounce_ms: 96, // 3 frames
         ..Default::default()
     };
     let mut sm = VadStateMachine::new(&config);
@@ -357,8 +376,8 @@ fn vad_constants_standard_values() {
 #[test]
 fn vad_detects_speech_in_simulated_audio_stream() {
     let config = VadConfig {
-        speech_debounce_ms: 32,   // 1 frame
-        silence_debounce_ms: 64,  // 2 frames
+        speech_debounce_ms: 32,  // 1 frame
+        silence_debounce_ms: 64, // 2 frames
         onset_threshold_db: 9.0,
         offset_threshold_db: 6.0,
         initial_floor_db: -50.0,
@@ -413,6 +432,13 @@ fn vad_detects_speech_in_simulated_audio_stream() {
     }
 
     // Should have detected at least one SpeechStart
-    let starts: Vec<_> = events.iter().filter(|e| matches!(e, VadEvent::SpeechStart { .. })).collect();
-    assert!(!starts.is_empty(), "should detect speech start; events: {:?}", events);
+    let starts: Vec<_> = events
+        .iter()
+        .filter(|e| matches!(e, VadEvent::SpeechStart { .. }))
+        .collect();
+    assert!(
+        !starts.is_empty(),
+        "should detect speech start; events: {:?}",
+        events
+    );
 }

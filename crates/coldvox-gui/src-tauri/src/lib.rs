@@ -1,14 +1,16 @@
+mod contract;
 mod state;
 mod window;
-mod contract;
 
 use std::sync::Arc;
 
-use contract::{OverlayEvent, OverlaySnapshot, OVERLAY_EVENT_NAME, OverlayStatus};
+use coldvox_app::runtime::{
+    self as app_runtime, ActivationMode, AppHandle as ColdVoxHandle, AppRuntimeOptions,
+};
+use coldvox_app::stt::TranscriptionEvent;
+use contract::{OverlayEvent, OverlaySnapshot, OverlayStatus, OVERLAY_EVENT_NAME};
 use state::OverlayModel;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
-use coldvox_app::runtime::{self as app_runtime, AppHandle as ColdVoxHandle, AppRuntimeOptions, ActivationMode};
-use coldvox_app::stt::TranscriptionEvent;
 use tokio::sync::Mutex as AsyncMutex;
 
 #[derive(Default)]
@@ -95,10 +97,13 @@ async fn start_pipeline(
         ..Default::default()
     };
 
-    let mut coldvox_app = app_runtime::start(opts).await
+    let mut coldvox_app = app_runtime::start(opts)
+        .await
         .map_err(|e| format!("Failed to start ColdVox runner: {}", e))?;
 
-    let mut stt_rx = coldvox_app.stt_rx.take()
+    let mut stt_rx = coldvox_app
+        .stt_rx
+        .take()
         .ok_or_else(|| "STT channel not available".to_string())?;
 
     let coldvox_app = Arc::new(coldvox_app);
@@ -127,7 +132,10 @@ async fn start_pipeline(
     *handle_guard = Some(coldvox_app);
 
     let snapshot = runtime.with_model(|model| {
-        model.set_status(OverlayStatus::Listening, "Pipeline started (Always-On Mode)".to_string())
+        model.set_status(
+            OverlayStatus::Listening,
+            "Pipeline started (Always-On Mode)".to_string(),
+        )
     });
 
     emit_and_resize(&app, &window, &snapshot, "pipeline-started")
@@ -142,9 +150,8 @@ async fn stop_pipeline(
     let mut handle_guard = runtime.app_handle.lock().await;
     if let Some(handle) = handle_guard.take() {
         handle.shutdown().await;
-        let snapshot = runtime.with_model(|model| {
-            model.reset_to_idle("Pipeline stopped.".to_string())
-        });
+        let snapshot =
+            runtime.with_model(|model| model.reset_to_idle("Pipeline stopped.".to_string()));
         emit_and_resize(&app, &window, &snapshot, "pipeline-stopped")
     } else {
         Err("Pipeline not running".to_string())
