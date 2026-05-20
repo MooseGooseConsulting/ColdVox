@@ -27,6 +27,18 @@ version: 1.0.0
 ## Epic: Testing Strategy
 - [x] Develop playbook for debugging test failures with LLMs ([playbook](./playbooks/testing/llm-test-debugging-playbook.md)).
 
+## Epic: tauri-base STT Rescue Follow-ups (PR-B, post-merge)
+
+These items came out of the 2026-05-19 rescue of commit `c36621f`. They are scoped for a follow-up PR after PR-A merges. Tracked here so the recovery doesn't lose context.
+
+- [ ] **Audit-3** — triage and delete the abandoned local + remote branches surfaced in the rescue inventory. Cross-reference each against open and merged PRs first; never delete without confirming the work is captured elsewhere.
+- [ ] **Audit-5** — evaluate a structural lint that asserts the AGENTS.md *"Canonical STT default changes require an ADR"* Working Rule. Design it as per-violation comment + on-disk ADR-N file existence check (a previous attempt that gated globally on *any* ADR file existing was scrapped because it was bypassable).
+- [ ] **Observability** — emit a `stt.plugin_selection` tracing event at app startup carrying the resolved `preferred` plugin and the *source* (TOML `[stt].preferred` / `plugins.json` / `None`). Makes the [ADR-002](./decisions/ADR-002-stt-settings-precedence.md) precedence resolution observable post-mortem instead of having to reason from code.
+- [ ] **Config hygiene** — add an inline TOML comment above `[stt]` in `config/default.toml` pointing to [ADR-002](./decisions/ADR-002-stt-settings-precedence.md) so the precedence tripwire is visible to anyone editing the file.
+- [ ] **.gitignore** — add `.omc/`, `compile_errors.txt`, `prs*.txt` so working files from agent sessions stop polluting `git status`.
+- [ ] **Third copy** — `docs/repo/copilot-instructions.md` is a 12.5K third copy of agent onboarding content that was not touched by the mirror-sync teardown. Decide: delete, archive, or re-point to `AGENTS.md`.
+- [ ] **Stale references** — prune `ensure_agent_hardlinks` / `.kilocode` mentions from `docs/plans/cleanup-plan.md` and the archive plans now that the infrastructure is gone.
+
 ## Epic: Agentic Documentation Governance
 
 - [ ] Replace deterministic frontmatter CI gate with scoped LLM docs reviewer in CI.

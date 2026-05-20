@@ -132,7 +132,7 @@ The following files are explicitly allowed outside `/docs/`:
 - `README.md` - Repository overview and quick-start
 - `CHANGELOG.md` - User-facing release notes
 - `AGENTS.md` - Canonical AI agent instructions and doc-routing entry point
-- `.github/copilot-instructions.md` - Full agent onboarding (source of truth, synced to AGENTS.md)
+- `.github/copilot-instructions.md` - Thin shim pointing readers to `AGENTS.md` (retained only for tools that look at this path directly; no longer kept in sync via a script)
 - `PR-NNN-*.md` - Pull request assessment documents (temporary)
 
 **GitHub templates:**

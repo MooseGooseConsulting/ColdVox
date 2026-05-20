@@ -789,7 +789,6 @@ pub async fn start(
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "http-remote")]
     use super::*;
 
     #[cfg(feature = "http-remote")]

@@ -29,9 +29,5 @@ chmod +x "$hooks_path"/*
 
 # 3) Ensure critical scripts called by hooks are executable
 chmod +x "$repo_root/scripts/validate_domain_docs_naming.py"
-chmod +x "$repo_root/scripts/ensure_agent_hardlinks.sh"
-
-# 4) Run the agent hardlink ensure script (sync mirrors immediately)
-"$repo_root/scripts/ensure_agent_hardlinks.sh" --quiet
 
 echo "✓ Git hooks installed successfully from .githooks/"

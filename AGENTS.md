@@ -28,8 +28,9 @@ When guidance conflicts, use this order:
 
 - ColdVox is a Rust workspace for audio capture, VAD, STT routing, and text injection.
 - Windows is the priority environment.
-- `config/default.toml` is the checked-in startup config and currently defaults STT to `mock`.
-- `config/plugins.json` is plugin-manager persistence, not the primary startup config.
+- `config/default.toml` is the checked-in startup config. The canonical STT default is the `http-remote` transport profile (see `[stt.remote]` in `config/default.toml`). The top-level `[stt].preferred` key is unset, so plugin selection falls through to `config/plugins.json`.
+- `config/plugins.json` is plugin-manager persistence (`preferred_plugin = "http-remote"`), not the primary startup config. See [docs/decisions/ADR-001-runtime-vs-persisted-plugin-selection.md](docs/decisions/ADR-001-runtime-vs-persisted-plugin-selection.md) for the runtime-vs-persisted contract and [docs/decisions/ADR-002-stt-settings-precedence.md](docs/decisions/ADR-002-stt-settings-precedence.md) for the precedence rules between TOML and `plugins.json`.
+- The canonical plugin-selection function is `load_canonical_plugin_selection_config()` in `crates/app/src/lib.rs`.
 - `crates/coldvox-gui` exists, but the GUI is still a stub/prototype path.
 - The canonical command surface lives in the root [justfile](justfile).
 - The canonical Windows-local validation path is `just windows-run-preflight`, `just windows-smoke`, `just windows-live`, and `just test` as documented in [docs/windows-live-runbook.md](docs/windows-live-runbook.md).
@@ -41,6 +42,8 @@ When guidance conflicts, use this order:
 - Validate changes before claiming success. Start with the smallest relevant check, then widen only as needed.
 - Keep documentation changes thin and link-heavy; do not turn root agent docs into a second README.
 - Update [CHANGELOG.md](CHANGELOG.md) only for user-visible changes, following [docs/standards.md](docs/standards.md).
+- **Code > docs — escalate.** When code and docs appear to conflict, code wins. Do not silently rewrite code to match stale docs. Escalate to the user with both file paths and the contradiction.
+- **Canonical STT default changes require an ADR.** Do not change the checked-in canonical STT default (the `[stt.remote]` profile in `config/default.toml`, the top-level `[stt].preferred` key, the `preferred_plugin` field in `config/plugins.json`, or the canonical `load_canonical_plugin_selection_config()` function) without first writing an ADR under `docs/decisions/` and getting explicit user approval.
 
 ## Ask First
 
@@ -57,4 +60,5 @@ When guidance conflicts, use this order:
 - Documentation index: [docs/index.md](docs/index.md)
 - Documentation policy: [docs/standards.md](docs/standards.md)
 - Active documentation backlog: [docs/todo.md](docs/todo.md)
+- Architectural decision records: [docs/decisions](docs/decisions)
 - Longer-term plans and research: [docs/plans](docs/plans) and [docs/research](docs/research)

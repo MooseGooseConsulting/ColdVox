@@ -74,8 +74,7 @@ The Parakeet HTTP/container path owns model provisioning inside the Docker volum
 ## Notes
 
 - The checked-in default config stays on `mock` so tests remain deterministic.
-- `config/plugins.json` is plugin-manager persistence, not the startup selector for normal runs.
-- The preferred live-capable STT route is the containerized Parakeet HTTP path on `localhost:5092`, selected explicitly through `config/windows-parakeet.toml`, env overrides such as `COLDVOX__STT__PREFERRED=http-remote`, and the `parakeet-*` / `windows-*` just recipes.
+- The preferred live-capable STT route is the containerized Parakeet HTTP path on `localhost:5092`, selected explicitly through `config/windows-parakeet.toml` and the `parakeet-*` / `windows-*` just recipes.
 - Automated validation does not require user speech input; manual microphone quality checks should be documented separately with their artifact path.
 - `coldvox-gui` is only a stub smoke target; Tauri GUI work belongs on `tauri-base`.
 - The required matrix compiles `golden_master` with the real Windows feature

@@ -314,8 +314,12 @@ function Invoke-Smoke {
         throw "coldvox --list-devices failed with exit code $($devices.ExitCode)."
     }
 
+    # GUI is now a real Tauri shell (PR wiring `50484b4`); `cargo run` opens a WebView2
+    # window which crashes in non-interactive contexts with STATUS_STACK_BUFFER_OVERRUN.
+    # Build-only smoke verifies it links; runtime GUI coverage belongs in `windows-live`
+    # where a real display is available.
     $gui = Invoke-LoggedProcess -Name 'coldvox-gui-smoke' -FilePath 'cargo' -ArgumentList @(
-        'run',
+        'build',
         '-p', 'coldvox-gui',
         '--quiet'
     )

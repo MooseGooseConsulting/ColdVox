@@ -1,6 +1,9 @@
-})"
+#!/usr/bin/env bash
+set -euo pipefail
 
-"$repo_root/scripts/ensure_agent_hardlinks.sh" --quiet
+repo_root="$({
+  cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd
+})"
 
 # Documentation naming validator (mandatory per docs/MasterDocumentationPlaybook.md)
 uv run "$repo_root/scripts/validate_domain_docs_naming.py"

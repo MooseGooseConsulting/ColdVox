@@ -80,19 +80,6 @@ jobs:
             exit 1
           fi
 
-      - name: Validate agent instruction mirrors
-        run: |
-          if ! diff -u AGENTS.md .github/copilot-instructions.md; then
-            echo "::error::Agent instruction mirror drift: .github/copilot-instructions.md differs from AGENTS.md"
-            echo "hint: run ./scripts/ensure_agent_hardlinks.sh (or mise run prepare)" >&2
-            exit 1
-          fi
-          if ! diff -u AGENTS.md .kilocode/rules/agents.md; then
-            echo "::error::Agent instruction mirror drift: .kilocode/rules/agents.md differs from AGENTS.md"
-            echo "hint: run ./scripts/ensure_agent_hardlinks.sh (or mise run prepare)" >&2
-            exit 1
-          fi
-
       - name: Append revision log entries
         run: |
           uv run scripts/docs_revision_logger.py "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" "${{ github.actor }}"
