@@ -2,23 +2,19 @@ mod state;
 mod window;
 mod contract;
 
-use std::{
-    sync::Arc,
-    time::Duration,
-};
+use std::sync::Arc;
 
 use contract::{OverlayEvent, OverlaySnapshot, OVERLAY_EVENT_NAME, OverlayStatus};
 use state::OverlayModel;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 use coldvox_app::runtime::{self as app_runtime, AppHandle as ColdVoxHandle, AppRuntimeOptions, ActivationMode};
 use coldvox_app::stt::TranscriptionEvent;
-use coldvox_stt::plugin::PluginSelectionConfig;
 use tokio::sync::Mutex as AsyncMutex;
 
 #[derive(Default)]
 struct OverlayRuntime {
     model: Arc<parking_lot::Mutex<OverlayModel>>,
-    app_handle: Arc<AsyncMutex<Option<ColdVoxHandle>>>,
+    app_handle: Arc<AsyncMutex<Option<Arc<ColdVoxHandle>>>>,
 }
 
 impl OverlayRuntime {
@@ -94,8 +90,7 @@ async fn start_pipeline(
 
     let opts = AppRuntimeOptions {
         activation_mode: ActivationMode::AlwaysOnPushToTranscribe,
-        resampler_quality: coldvox_audio::ResamplerQuality::Balanced,
-        stt_selection: Some(coldvox_stt::plugin::PluginSelectionConfig::default()),
+        stt_selection: None,
         enable_device_monitor: true,
         ..Default::default()
     };
@@ -105,6 +100,8 @@ async fn start_pipeline(
 
     let mut stt_rx = coldvox_app.stt_rx.take()
         .ok_or_else(|| "STT channel not available".to_string())?;
+
+    let coldvox_app = Arc::new(coldvox_app);
 
     let model_clone = runtime.model.clone();
     let app_clone = app.clone();
