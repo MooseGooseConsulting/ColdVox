@@ -402,11 +402,12 @@ fn vad_detects_speech_in_simulated_audio_stream() {
     // Silence tail
     for _ in 0..5 {
         let db = calc.calculate_dbfs(&silence_frame);
-        let is_speech = threshold.should_deactivate(db);
-        // Note: during speech state, we check deactivation
+        // should_deactivate returns true when energy is below the offset threshold (i.e., silence).
+        // is_speech_candidate = false when below_offset = true (silence detected).
         let below_offset = threshold.should_deactivate(db);
-        threshold.update(db, !below_offset);
-        if let Some(ev) = sm.process(!below_offset, db) {
+        let is_speech_candidate = !below_offset;
+        threshold.update(db, is_speech_candidate);
+        if let Some(ev) = sm.process(is_speech_candidate, db) {
             events.push(ev);
         }
     }
