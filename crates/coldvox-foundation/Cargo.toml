@@ -20,4 +20,4 @@ config = { version = "0.15", features = ["toml"] }
 default = []
 
 [dev-dependencies]
-serial_test = "3.4"
+serial_test = "3.5"

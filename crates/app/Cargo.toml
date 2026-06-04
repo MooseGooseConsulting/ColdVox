@@ -68,7 +68,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 async-trait = "0.1"
 hound = "3.5"
-rubato = "2.0"
+rubato = "3.0"
 audioadapter = "3.0"
 audioadapter-buffers = "3.0"
 crossbeam-channel = "0.5"
@@ -100,7 +100,7 @@ tokio-test = "0.4"
 ctrlc = "3.5"
 proptest = "1.11"
 rand = "0.10"
-serial_test = "3.4"
+serial_test = "3.5"
 similar-asserts = "2.0"
 
 [features]

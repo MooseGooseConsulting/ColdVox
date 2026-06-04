@@ -36,7 +36,7 @@ parakeet-tensorrt = ["parakeet", "parakeet-rs/tensorrt"]
 
 [dev-dependencies]
 tokio = { version = "1.52", features = ["rt-multi-thread", "macros", "io-util", "net", "time"] }
-serial_test = "3.4"
+serial_test = "3.5"
 hound = "3.5"
 
 # Gate moonshine example behind feature flag
