@@ -68,9 +68,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 async-trait = "0.1"
 hound = "3.5"
-rubato = "2.0"
-audioadapter = "3.0"
-audioadapter-buffers = "3.0"
+rubato = "3.0"
+audioadapter = "4.0"
+audioadapter-buffers = "4.0"
 crossbeam-channel = "0.5"
 once_cell = "1.21"
 serde = { version = "1.0", features = ["derive"] }
@@ -90,7 +90,7 @@ coldvox-vad = { path = "../coldvox-vad" }
 coldvox-vad-silero = { path = "../coldvox-vad-silero", features = ["silero"] }
 coldvox-stt = { path = "../coldvox-stt" }
 csv = "1.3"
-cpal = "0.17.3"
+cpal = "0.18.1"
 config = { version = "0.15", features = ["toml"] }
 
 [dev-dependencies]

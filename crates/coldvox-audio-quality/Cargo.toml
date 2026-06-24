@@ -16,7 +16,7 @@ rustfft = "6.2"
 spectrum-analyzer = "1.5"
 
 # Ring buffer for rolling windows
-ringbuf = "0.4"
+ringbuf = "0.5"
 
 # Optional: for serialization
 serde = { version = "1.0", features = ["derive"], optional = true }

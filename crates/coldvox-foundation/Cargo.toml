@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 thiserror = "2.0"
 tokio = { version = "1.52", features = ["sync", "time", "rt", "signal"] }
 tracing = "0.1"
-cpal = "0.17"
+cpal = "0.18"
 serde = { version = "1.0", features = ["derive"] }
 parking_lot = "0.12"
 crossbeam-channel = "0.5"
