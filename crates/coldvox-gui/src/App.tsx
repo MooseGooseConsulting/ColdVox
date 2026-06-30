@@ -4,6 +4,7 @@ import { useOverlayShell } from "./hooks/useOverlayShell";
 function App() {
   const {
     snapshot,
+    micLevel,
     clearTranscript,
     openSettings,
     setExpanded,
@@ -16,6 +17,7 @@ function App() {
     <main className="app-frame">
       <OverlayShell
         snapshot={snapshot}
+        micLevel={micLevel}
         onSetExpanded={setExpanded}
         onStartDemo={startPipeline}
         onTogglePause={togglePause}

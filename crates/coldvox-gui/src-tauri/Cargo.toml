@@ -2,13 +2,52 @@
 name = "coldvox-gui"
 version = "0.1.0"
 edition = "2021"
-description = "Windows GUI stub smoke for ColdVox"
+description = "Tauri host shell for the ColdVox overlay (pipeline-wired, Handy-inspired tray/shortcut/audio-feedback)"
 publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "2.10.3", features = [] }
+tauri = { version = "2.10.3", features = ["tray-icon", "image-png"] }
+tauri-plugin-log = "2"
+tauri-plugin-store = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-os = "2"
+tauri-plugin-notification = "2"
+
+# ColdVox pipeline seam. tauri-base already enables `http-remote` +
+# `text-injection` on coldvox-app; we keep that so a real STT backend is
+# compiled in (the runtime still gates activation behind `stt_selection`).
 coldvox-app = { path = "../../app", features = ["http-remote", "text-injection"] }
-tokio = { version = "1.50.0", features = ["full"] }
+coldvox-audio = { path = "../../coldvox-audio" }
+coldvox-stt = { path = "../../coldvox-stt" }
+coldvox-vad = { path = "../../coldvox-vad" }
+
+tokio = { version = "1", features = ["full"] }
 parking_lot = "0.12"
+log = "0.4"
+tracing = "0.1"
+
+# Optional start/stop sound cues, ported from Handy. Gated so default builds
+# stay free of the rodio/cpal audio-output stack (coldvox-audio already pulls
+# cpal for capture, but rodio adds a decoder + output sink). Enable with
+# `--features audio-feedback`.
+#
+# Pinned to 0.19: the `audio_feedback` module uses `OutputStream::try_default`
+# + `Sink::try_new`, which are the 0.19-era APIs. `default-features = false`
+# drops all decoders (wav/vorbis/flac/mp3) since the module synthesizes a
+# sine wave via a custom `rodio::Source` impl and never loads a file.
+# NOTE: the `audio-feedback` feature is not compiled by default and was not
+# exercised by CI at PR time; enable it explicitly to validate.
+rodio = { version = "0.19", optional = true, default-features = false }
+
+[features]
+default = []
+# Start/stop feedback sounds (sine-wave cues). See `audio_feedback` module.
+audio-feedback = ["dep:rodio"]

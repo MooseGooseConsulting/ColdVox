@@ -4,6 +4,7 @@ import { StatusPill } from "./StatusPill";
 
 interface OverlayShellProps {
   snapshot: OverlaySnapshot;
+  micLevel?: number;
   onSetExpanded: (expanded: boolean) => Promise<void>;
   onStartDemo: () => Promise<void>;
   onTogglePause: () => Promise<void>;
@@ -22,6 +23,7 @@ const STATE_NOTES = {
 
 export function OverlayShell({
   snapshot,
+  micLevel = 0,
   onSetExpanded,
   onStartDemo,
   onTogglePause,
@@ -54,6 +56,13 @@ export function OverlayShell({
     snapshot.status === "idle" ||
     snapshot.status === "ready" ||
     snapshot.status === "error";
+
+  // Boost faint signals so quiet speech still moves the meter visibly. Curved
+  // (pow 0.6) so low-end sensitivity is high without clipping loud peaks.
+  const meterPct = Math.min(100, Math.pow(micLevel, 0.6) * 140);
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   if (!snapshot.expanded) {
     return (
@@ -90,6 +99,21 @@ export function OverlayShell({
         <div className="header-column header-column--status">
           <StatusPill status={snapshot.status} />
           <span className="status-caption">{STATE_NOTES[snapshot.status]}</span>
+          {snapshot.status === "listening" || snapshot.status === "processing" ? (
+            <div
+              className="mic-meter"
+              role="meter"
+              aria-label="Microphone input level"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(meterPct)}
+            >
+              <div
+                className="mic-meter__fill"
+                style={{ width: `${reducedMotion ? Math.round(meterPct) : meterPct}%` }}
+              />
+            </div>
+          ) : null}
         </div>
 
         <button
