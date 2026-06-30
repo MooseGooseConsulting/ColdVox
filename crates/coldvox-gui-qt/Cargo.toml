@@ -1,0 +1,25 @@
+[package]
+name = "coldvox-gui-qt"
+version = "0.1.0"
+edition = "2021"
+description = "ColdVox overlay GUI — Qt 6 + QML alternative host shell"
+publish = false
+
+# ---------------------------------------------------------------------------
+# NOTE: This crate requires Qt 6.2+ and CMake to be present on the host.
+# It is intentionally excluded from the root Cargo workspace to avoid
+# breaking workspace-wide `cargo check` on machines without Qt.
+#
+# Build with:
+#   cargo build --manifest-path crates/coldvox-gui-qt/Cargo.toml
+#
+# See README.md for full build requirements.
+# ---------------------------------------------------------------------------
+
+[dependencies]
+cxx = "1.0"
+cxx-qt = "0.7"
+cxx-qt-lib = { version = "0.7", features = ["qt_gui", "qt_qml"] }
+
+[build-dependencies]
+cxx-qt-build = "0.7"
