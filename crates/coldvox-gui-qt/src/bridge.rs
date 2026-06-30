@@ -134,7 +134,7 @@ impl GuiBridge {
             let _guard = rt.enter();
 
             rt.block_on(async {
-                use coldvox_app::runtime::{AppRuntimeOptions, ActivationMode};
+                use coldvox_app::runtime::{ActivationMode, AppRuntimeOptions};
 
                 // Match the Tauri backend: leave stt_selection None so the
                 // runtime boots audio + VAD without activating STT. The
