@@ -1,6 +1,8 @@
 import QtQuick 6.5
 import QtQuick.Controls 6.5
 import QtQuick.Layouts 6.5
+import QtQuick.Window 6.5
+import ColdVox 1.0
 import Qt5Compat.GraphicalEffects
 import Qt.labs.settings 1.1
 
@@ -16,6 +18,12 @@ Window {
   flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
   color: "transparent"
   property real scaleFactor: Screen.pixelDensity > 0 ? Screen.pixelDensity / 4.0 : 1.0
+
+  // The CXX-Qt bridge qobject, registered via #[qml_element] under the
+  // ColdVox URI. Instantiated here so every `bridge.*` binding below resolves
+  // to the real runtime. The `typeof bridge !== 'undefined'` guards are kept
+  // so the QML still loads standalone (e.g. in Qt Designer) without the import.
+  GuiBridge { id: bridge }
 
   property bool expanded: settings.expanded
   // AppState enum: 0=Idle 1=Activating 2=Active 3=Paused 4=Stopping 5=Error
@@ -146,9 +154,10 @@ Window {
         anchors.margins: 12
         spacing: 6
         Repeater {
+          id: barsRepeater
           model: 24
           delegate: Rectangle {
-            width: (bars.width - (bars.spacing * (model - 1))) / model
+            width: (bars.width - (bars.spacing * (barsRepeater.count - 1))) / barsRepeater.count
             radius: 2
             anchors.bottom: parent.bottom
             color: st === 1 ? "#FFD24D" : (st === 2 ? "#FF4D4D" : "#00D084")
@@ -245,7 +254,16 @@ Window {
     }
   ]
 
-  Timer { id: perfTimer; interval: 33; running: expanded; repeat: true; onTriggered: {} }
+  // Drive the waveform animation. `Timer` has no `msec` property, so we
+  // maintain a counter incremented on each tick and read by the bar delegates.
+  Timer {
+    id: perfTimer
+    interval: 33
+    running: expanded
+    repeat: true
+    property int msec: 0
+    onTriggered: msec += interval
+  }
 
   SettingsWindow { id: settingsWindow }
 

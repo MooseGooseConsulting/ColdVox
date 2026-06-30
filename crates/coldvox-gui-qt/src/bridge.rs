@@ -8,6 +8,10 @@
 // `coldvox-app` with a real STT feature (parakeet/whisper) for transcription.
 //
 // Only compiled under the `qt-ui` feature (see `main.rs` gating).
+//
+// The `GuiBridge` qobject is registered as a QML element (`#[qml_element]`)
+// under the `ColdVox` URI (see `build.rs`'s `qml_module` call), so QML can
+// instantiate it directly: `GuiBridge { id: bridge }`.
 
 /// Pipeline state exposed to QML as a Q_ENUM.
 #[cxx_qt::qenum]
@@ -35,6 +39,9 @@ mod ffi {
         #[qenum]
         type AppState = super::AppState;
 
+        // Registered as a QML element so QML can instantiate `GuiBridge { id: bridge }`.
+        // The build.rs `qml_module("ColdVox", 1, 0, ...)` call registers the URI.
+        #[qml_element]
         #[qobject]
         #[qproperty(bool, expanded)]
         #[qproperty(AppState, state)]
@@ -55,7 +62,8 @@ mod ffi {
         #[qinvokable]
         fn cmd_start(self: Pin<&mut Self>);
 
-        /// Stop the pipeline. Active/Paused -> Idle.
+        /// Stop the pipeline. Active/Paused -> Stopping -> Idle.
+        /// Performs a real `shutdown().await` on the runtime handle.
         #[qinvokable]
         fn cmd_stop(self: Pin<&mut Self>);
 
@@ -78,6 +86,22 @@ mod ffi {
 }
 
 use std::pin::Pin;
+use std::sync::{Arc, Mutex, OnceLock};
+
+use cxx_qt_lib::QString;
+
+use coldvox_app::runtime::AppHandle as ColdVoxHandle;
+
+/// Module-level slot for the live pipeline handle. The bridge is a singleton
+/// (only one pipeline can run at a time), so a static is appropriate here and
+/// avoids the need to thread an `Arc<Mutex<…>>` through CXX-Qt's qobject field
+/// accessors (which don't easily expose non-QML types like `Arc<AppHandle>`).
+/// `cmd_start` stores the handle here after a successful `runtime::start`;
+/// `cmd_stop` takes it out and calls `shutdown().await`.
+fn runtime_slot() -> &'static Mutex<Option<Arc<ColdVoxHandle>>> {
+    static SLOT: OnceLock<Mutex<Option<Arc<ColdVoxHandle>>>> = OnceLock::new();
+    SLOT.get_or_init(|| Mutex::new(None))
+}
 
 #[derive(Default)]
 pub struct GuiBridgeRust {
@@ -111,11 +135,15 @@ impl GuiBridge {
 
             rt.block_on(async {
                 use coldvox_app::runtime::{AppRuntimeOptions, ActivationMode};
-                use coldvox_stt::plugin::PluginSelectionConfig;
 
+                // Match the Tauri backend: leave stt_selection None so the
+                // runtime boots audio + VAD without activating STT. The
+                // `http-remote` backend is compiled in via Cargo.toml; turn
+                // it on here in a follow-up once the Qt settings UI exposes
+                // endpoint configuration.
                 let opts = AppRuntimeOptions {
                     activation_mode: ActivationMode::AlwaysOnPushToTranscribe,
-                    stt_selection: Some(PluginSelectionConfig::default()),
+                    stt_selection: None,
                     enable_device_monitor: true,
                     ..Default::default()
                 };
@@ -123,9 +151,21 @@ impl GuiBridge {
                 match coldvox_app::runtime::start(opts).await {
                     Ok(mut app) => {
                         let stt_rx = app.stt_rx.take();
-                        let shared = std::sync::Arc::new(app);
+                        let shared = Arc::new(app);
+
+                        // Store the handle so cmd_stop can shut it down.
+                        if let Ok(mut slot) = runtime_slot().lock() {
+                            *slot = Some(shared.clone());
+                        }
 
                         if let Some(mut rx) = stt_rx {
+                            // Clone qt_thread for the STT listener task. The
+                            // original `qt_thread` stays usable for the
+                            // post-start `set_state(Active)` queue below.
+                            // Without this clone, the `async move` capture
+                            // would move `qt_thread` and the later queue call
+                            // would be a use-after-move (compile error).
+                            let qt_thread_for_stt = qt_thread.clone();
                             tokio::spawn(async move {
                                 while let Some(event) = rx.recv().await {
                                     use coldvox_app::stt::TranscriptionEvent;
@@ -133,7 +173,7 @@ impl GuiBridge {
                                         TranscriptionEvent::Partial { text, .. } => {
                                             let owned = text.to_string();
                                             let q = QString::from(&owned);
-                                            qt_thread.queue(move |mut b| {
+                                            qt_thread_for_stt.queue(move |mut b| {
                                                 b.as_mut().set_partial_transcript(q.clone());
                                                 b.as_mut().transcript_partial(q);
                                             });
@@ -141,7 +181,8 @@ impl GuiBridge {
                                         TranscriptionEvent::Final { text, .. } => {
                                             let owned = text.to_string();
                                             let q = QString::from(&owned);
-                                            qt_thread.queue(move |mut b| {
+                                            let qt_for_final = qt_thread_for_stt.clone();
+                                            qt_thread_for_stt.queue(move |mut b| {
                                                 let existing =
                                                     b.as_ref().final_transcript().to_string();
                                                 let merged = if existing.is_empty() {
@@ -154,11 +195,12 @@ impl GuiBridge {
                                                 b.as_mut()
                                                     .set_partial_transcript(QString::default());
                                                 b.as_mut().transcript_final(q);
+                                                let _ = qt_for_final;
                                             });
                                         }
                                         TranscriptionEvent::Error { message, .. } => {
                                             let msg = message.to_string();
-                                            qt_thread.queue(move |mut b| {
+                                            qt_thread_for_stt.queue(move |mut b| {
                                                 b.as_mut().set_last_error(QString::from(&msg));
                                                 b.as_mut().set_state(AppState::Error);
                                             });
@@ -169,13 +211,15 @@ impl GuiBridge {
                         }
 
                         tracing::info!("ColdVox pipeline started (Qt backend)");
+                        // Queue the Active transition from the spawned thread.
+                        // Do NOT also set it optimistically on the Qt thread
+                        // (the prior version did both, which raced: a fast
+                        // failure would flicker Idle → Activating → Active → Error).
                         let _ = qt_thread.queue(|mut b| {
                             b.as_mut().set_state(AppState::Active);
                         });
 
-                        // Keep the runtime alive until the process exits. A
-                        // future cmd_stop that holds the Arc can shut it down
-                        // gracefully (tracked as a follow-up — see PR notes).
+                        // Keep the runtime alive until cmd_stop or process exit.
                         let _keep_alive = shared;
                         std::future::pending::<()>().await;
                     }
@@ -190,15 +234,12 @@ impl GuiBridge {
                 }
             });
         });
-
-        // Optimistically flip to Active; errors surface via the STT listener.
-        self.set_state(AppState::Active);
     }
 
-    /// Stop the pipeline. NOTE: full graceful shutdown requires holding the
-    /// `AppHandle` Arc across the bridge (tracked follow-up); this transitions
-    /// state so the UI reflects the intent. The Tauri backend performs a real
-    /// `shutdown().await` today.
+    /// Stop the pipeline. Takes the live `Arc<ColdVoxHandle>` out of the
+    /// runtime slot and calls `shutdown().await` on a dedicated thread (the
+    /// qinvokable is sync, but `shutdown` is async). Matches the Tauri
+    /// backend's `stop_pipeline_inner` semantics.
     pub fn cmd_stop(self: Pin<&mut Self>) {
         let current = *self.as_ref().state();
         if !matches!(current, AppState::Active | AppState::Paused) {
@@ -206,6 +247,25 @@ impl GuiBridge {
             return;
         }
         self.set_state(AppState::Stopping);
+
+        let handle = runtime_slot().lock().ok().and_then(|mut g| g.take());
+        if let Some(handle) = handle {
+            // `shutdown` is async and takes `self: Arc<Self>`, so spawn a
+            // thread with a one-shot runtime. This mirrors the cmd_start
+            // pattern and avoids blocking the Qt event loop.
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("failed to build runtime for ColdVox shutdown");
+                rt.block_on(async {
+                    handle.shutdown().await;
+                });
+            });
+        } else {
+            tracing::warn!("cmd_stop: no live runtime handle in slot; transitioning to Idle anyway");
+        }
+
         self.set_state(AppState::Idle);
     }
 

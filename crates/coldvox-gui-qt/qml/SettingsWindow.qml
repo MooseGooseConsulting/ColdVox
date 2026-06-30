@@ -1,6 +1,7 @@
 import QtQuick 6.5
 import QtQuick.Controls 6.5
 import QtQuick.Layouts 6.5
+import QtQuick.Window 6.5
 
 // Settings window for the ColdVox Qt overlay. Most controls are UI scaffolding
 // backed by Qt.labs.settings in Main.qml; backend wiring lands in a follow-up.
