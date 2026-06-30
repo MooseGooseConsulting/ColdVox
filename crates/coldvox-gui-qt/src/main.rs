@@ -8,9 +8,9 @@ fn main() {
     let mut app = QGuiApplication::new();
 
     let mut engine = QQmlApplicationEngine::new();
-    engine.pin_mut().load(&QUrl::from(
-        "qrc:/qt/qml/ColdVoxOverlay/qml/Overlay.qml",
-    ));
+    engine
+        .pin_mut()
+        .load(&QUrl::from("qrc:/qt/qml/ColdVoxOverlay/qml/Overlay.qml"));
 
     app.pin_mut().exec();
 }

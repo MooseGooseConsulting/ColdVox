@@ -148,8 +148,9 @@ pub struct OverlayBridgeRust {
 impl qobject::OverlayBridge {
     fn start_pipeline(mut self: core::pin::Pin<&mut Self>) {
         self.as_mut().set_status(QString::from(status::LISTENING));
-        self.as_mut()
-            .set_status_detail(QString::from("Demo starting — watch the partial stream build up."));
+        self.as_mut().set_status_detail(QString::from(
+            "Demo starting — watch the partial stream build up.",
+        ));
         self.as_mut().set_partial_transcript(QString::from(""));
         self.as_mut().set_final_transcript(QString::from(""));
         self.as_mut().set_expanded(true);
@@ -167,8 +168,9 @@ impl qobject::OverlayBridge {
             self.as_mut()
                 .set_error_message(QString::from("Nothing is active to stop."));
             self.as_mut().set_status(QString::from(status::ERROR));
-            self.as_mut()
-                .set_status_detail(QString::from("Stop only applies while a session is active."));
+            self.as_mut().set_status_detail(QString::from(
+                "Stop only applies while a session is active.",
+            ));
             self.as_mut().set_expanded(true);
             let _ = self.as_mut().error_raised();
             return;
@@ -180,8 +182,9 @@ impl qobject::OverlayBridge {
         self.as_mut().set_status(QString::from(status::IDLE));
         self.as_mut().set_paused(false);
         self.as_mut().set_partial_transcript(QString::from(""));
-        self.as_mut()
-            .set_status_detail(QString::from("Capture stopped. Ready for the next session."));
+        self.as_mut().set_status_detail(QString::from(
+            "Capture stopped. Ready for the next session.",
+        ));
         self.as_mut().set_error_message(QString::from(""));
     }
 
@@ -217,8 +220,9 @@ impl qobject::OverlayBridge {
         self.as_mut().set_paused(false);
         self.as_mut().set_partial_transcript(QString::from(""));
         self.as_mut().set_final_transcript(QString::from(""));
-        self.as_mut()
-            .set_status_detail(QString::from("Transcript cleared. Ready for a new session."));
+        self.as_mut().set_status_detail(QString::from(
+            "Transcript cleared. Ready for a new session.",
+        ));
         self.as_mut().set_error_message(QString::from(""));
     }
 
@@ -255,15 +259,13 @@ impl qobject::OverlayBridge {
 
         match &script[idx] {
             DemoStep::Partial(text) => {
-                self.as_mut()
-                    .set_partial_transcript(QString::from(*text));
+                self.as_mut().set_partial_transcript(QString::from(*text));
                 self.as_mut()
                     .set_status_detail(QString::from("Live transcription…"));
             }
             DemoStep::Final(text) => {
                 self.as_mut().set_partial_transcript(QString::from(""));
-                self.as_mut()
-                    .set_final_transcript(QString::from(*text));
+                self.as_mut().set_final_transcript(QString::from(*text));
                 self.as_mut().set_status(QString::from(status::READY));
                 self.as_mut()
                     .set_status_detail(QString::from("Transcription complete."));
@@ -285,8 +287,9 @@ impl qobject::OverlayBridge {
         self.as_mut().set_status(QString::from(status::LISTENING));
         self.as_mut().set_paused(false);
         self.as_mut().set_expanded(true);
-        self.as_mut()
-            .set_status_detail(QString::from("Streaming partial words from the STT pipeline."));
+        self.as_mut().set_status_detail(QString::from(
+            "Streaming partial words from the STT pipeline.",
+        ));
         self.as_mut().set_error_message(QString::from(""));
     }
 
