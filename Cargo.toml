@@ -10,6 +10,7 @@ members = [
     "crates/coldvox-text-injection",
     "crates/coldvox-stt",
     "crates/coldvox-gui/src-tauri",
+    "crates/coldvox-gui-qt",
 ]
 
 exclude = ["examples"]

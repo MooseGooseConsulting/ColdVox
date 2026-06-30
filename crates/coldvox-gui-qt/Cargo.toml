@@ -1,0 +1,46 @@
+[package]
+name = "coldvox-gui-qt"
+version = "0.1.0"
+edition = "2021"
+description = "Qt/CXX-Qt GUI backend for ColdVox (parallel to the Tauri coldvox-gui crate)"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "coldvox-gui-qt"
+path = "src/main.rs"
+
+[dependencies]
+# Qt 6 + CXX-Qt, gated behind `qt-ui` so default workspace builds stay stub-only
+# and do not require Qt6 dev packages on CI runners.
+cxx = { version = "1", optional = true }
+cxx-qt = { version = "0.7", optional = true }
+cxx-qt-lib = { version = "0.7", features = ["qt_qml", "qt_gui"], optional = true }
+# Real pipeline bindings — only needed when Qt UI is enabled.
+coldvox-app = { path = "../app", features = ["http-remote", "text-injection"], optional = true }
+coldvox-stt = { path = "../coldvox-stt", optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
+
+[build-dependencies]
+cxx-qt-build = { version = "0.7", optional = true }
+
+[features]
+default = []
+# Enable to build the Qt/CXX-Qt UI. Requires Qt6 (Gui/Qml/Quick) dev packages:
+#   Ubuntu/Debian: sudo apt install qt6-base-dev qt6-declarative-dev libqt6opengl6-dev qt6-qt5compat-dev
+#   Fedora:        sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qt5compat-devel
+#   Arch:          sudo pacman -S qt6-base qt6-declarative qt6-5compat
+#   Windows:       Qt installer or vcpkg
+qt-ui = [
+    "dep:cxx",
+    "dep:cxx-qt",
+    "dep:cxx-qt-lib",
+    "dep:coldvox-app",
+    "dep:coldvox-stt",
+    "dep:tokio",
+    "dep:tracing",
+    "dep:tracing-subscriber",
+    "dep:cxx-qt-build",
+]
