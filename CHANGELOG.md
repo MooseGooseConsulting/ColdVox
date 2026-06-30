@@ -12,6 +12,7 @@ All notable changes to this project are documented here.
 - Added an optional containerized Parakeet GPU HTTP comparison profile (`http-remote-parakeet-gpu`) with a repo-owned compose service on `8200`, using the live `/healthz` + `/audio/transcriptions` contract while preserving the CPU profile as the wave-1 default.
 
 ### GUI
+- Added an alternative `crates/coldvox-gui-qt` overlay backend implemented with Qt 6 + QML via `cxx-qt`; it is intentionally excluded from the root Cargo workspace so `cargo check --workspace` still succeeds on machines without Qt installed.
 - Replaced the old `crates/coldvox-gui` Qt/QML placeholder with a Tauri v2 + React overlay shell.
 - Added a demo-only typed command/event seam between the Rust host shell and the frontend to exercise collapsed/expanded states, transcript promotion, and visible `idle`/`listening`/`processing`/`ready`/`error` feedback without real STT integration.
 - Added 5 Tauri commands (`update_partial_transcript`, `update_final_transcript`, `set_overlay_processing`, `set_overlay_listening`, `stop_overlay_capture`) wiring the STT pipeline to the overlay shell, with corresponding `OverlayModel` state transitions.
