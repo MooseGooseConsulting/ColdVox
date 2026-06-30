@@ -129,7 +129,9 @@ fn menu_for(app: &AppHandle, status: OverlayStatus) -> tauri::Result<Menu> {
     // capture via the tray.
     let (start_enabled, stop_enabled) = match status {
         OverlayStatus::Idle | OverlayStatus::Ready => (true, false),
-        OverlayStatus::Listening | OverlayStatus::Processing | OverlayStatus::Error => (false, true),
+        OverlayStatus::Listening | OverlayStatus::Processing | OverlayStatus::Error => {
+            (false, true)
+        }
     };
 
     let start = MenuItem::with_id(
