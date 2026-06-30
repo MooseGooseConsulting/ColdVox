@@ -4,6 +4,11 @@ use crate::demo::DemoStep;
 #[derive(Debug, Default)]
 pub struct OverlayModel {
     snapshot: OverlaySnapshot,
+    /// Monotonically increasing token that is bumped on every stop/clear.
+    /// The demo async task captures the token at start and exits as soon as
+    /// the live value no longer matches, preventing stale demo tasks from
+    /// interfering with a freshly started session.
+    demo_token: u64,
 }
 
 impl OverlayModel {
@@ -200,6 +205,39 @@ impl OverlayModel {
             "Capture stopped. The seam is ready for the next session.".to_string();
         self.snapshot.error_message = None;
         self.snapshot()
+    }
+
+    /// Start the overlay demo and return the captured demo token together with
+    /// the initial snapshot. The caller spawns an async task that drives the
+    /// demo steps; it must exit when `current_demo_token()` no longer equals
+    /// the returned token.
+    pub fn start_demo(&mut self) -> (u64, OverlaySnapshot) {
+        self.demo_token += 1;
+        let token = self.demo_token;
+        self.snapshot.status = OverlayStatus::Listening;
+        self.snapshot.paused = false;
+        self.snapshot.partial_transcript.clear();
+        self.snapshot.final_transcript.clear();
+        self.snapshot.expanded = true;
+        self.snapshot.status_detail =
+            "Demo starting — watch the partial stream build up.".to_string();
+        self.snapshot.error_message = None;
+        (token, self.snapshot())
+    }
+
+    /// Apply a single demo step and return the resulting snapshot.
+    pub fn apply_demo_step(&mut self, step: &DemoStep) -> OverlaySnapshot {
+        match step {
+            DemoStep::Partial(text) => self.update_partial(text.clone()),
+            DemoStep::Final(text) => self.update_final(text.clone()),
+            DemoStep::Wait(_) => self.snapshot(),
+        }
+    }
+
+    /// Return the current demo token. The demo driver uses this to detect
+    /// whether a stop/clear has made the running demo stale.
+    pub fn current_demo_token(&self) -> u64 {
+        self.demo_token
     }
 
     fn reject_command(&mut self, message: &str, detail: &str) -> OverlaySnapshot {
