@@ -14,10 +14,25 @@
 - Focus on cheap, pure-Rust crates and docs/tooling.
 
 ## Completed tasks
-- (in progress)
+- Fixed rustfmt violations in `coldvox-gui/src-tauri/src/lib.rs`.
+- Fixed clippy `manual_checked_ops` in `coldvox-audio/src/frame_reader.rs`.
+- Synced `Cargo.lock` (added missing `tokio` dep for `coldvox-gui`).
+- Documented `coldvox-gui-qt` in `CHANGELOG.md` and linked it from `docs/reference/crates/coldvox-gui.md`.
+- Applied rustfmt to excluded `coldvox-gui-qt` crate.
+
+## Verification results
+- `cargo fmt --all -- --check`: PASS.
+- `cargo fmt --manifest-path crates/coldvox-gui-qt/Cargo.toml -- --check`: PASS.
+- `cargo clippy -- -D warnings` (buildable crates): PASS.
+- Buildable crate tests (audio/stt/vad/text-injection/foundation/telemetry): PASS.
 
 ## Blocked / deferred
-- GUI crates (Tauri/Qt) full build: missing system deps.
+- `coldvox-app` and `coldvox-vad-silero` (default features): `ort-sys` build downloads onnxruntime → blocked by sandbox network.
+- GUI crates (Tauri/Qt) full build: missing system deps (webkit2gtk / Qt 6).
+
+## Remaining useful work (next agent)
+- Run full `cargo clippy --workspace -- -D warnings` and `cargo test --workspace` on a runner with ALSA + onnxruntime + Qt/webkit available.
+- Consider a dedicated `docs/reference/crates/coldvox-gui-qt.md` index doc matching repo doc conventions.
 
 ## Assumptions
 - CI gate is `cargo clippy --workspace --all-targets --locked -- -D warnings` and `cargo fmt --all -- --check` per justfile.
