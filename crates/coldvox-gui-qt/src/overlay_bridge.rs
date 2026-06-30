@@ -138,11 +138,8 @@ pub struct OverlayBridgeRust {
     demo_generation: u64,
 }
 
-impl Default for QString {
-    fn default() -> Self {
-        QString::from("")
-    }
-}
+// Note: `cxx-qt-lib`'s `QString` implements `Default` as an empty string;
+// we rely on that derived default for `OverlayBridgeRust`.
 
 // ---------------------------------------------------------------------------
 // Invokable implementations

@@ -113,9 +113,11 @@ Window {
                 }
 
                 Text {
-                    text: overlay.partialTranscript
-                          || overlay.finalTranscript
-                          || overlay.statusDetail
+                    text: overlay.partialTranscript !== ""
+                          ? overlay.partialTranscript
+                          : (overlay.finalTranscript !== ""
+                             ? overlay.finalTranscript
+                             : overlay.statusDetail)
                     color: "#9ca3af"
                     font.pixelSize: 11
                     elide: Text.ElideRight
@@ -400,9 +402,9 @@ Window {
 
                     Repeater {
                         model: [
-                            { label: "Stop",         action: function() { overlay.stop_pipeline();  demoTimer.stop() } },
+                            { label: "Stop",    action: function() { overlay.stop_pipeline(); demoTimer.stop() } },
                             { label: overlay.paused ? "Resume" : "Pause", action: function() { overlay.toggle_pause() } },
-                            { label: "Clear",        action: function() { overlay.clear_transcript(); demoTimer.stop() } },
+                            { label: "Clear",   action: function() { overlay.clear_transcript(); demoTimer.stop() } },
                         ]
                         Button {
                             required property var modelData
