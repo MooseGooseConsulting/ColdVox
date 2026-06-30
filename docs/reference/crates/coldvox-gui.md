@@ -23,3 +23,7 @@ The crate-level status note lives in [`crates/coldvox-gui/README.md`](../../../c
 - Rust package manifest: [`src-tauri/Cargo.toml`](../../../crates/coldvox-gui/src-tauri/Cargo.toml)
 - Rust shell entry: [`src-tauri/src/lib.rs`](../../../crates/coldvox-gui/src-tauri/src/lib.rs)
 - Rust overlay model: [`src-tauri/src/state.rs`](../../../crates/coldvox-gui/src-tauri/src/state.rs)
+
+## Alternative Backends
+
+An alternative Qt 6 + QML overlay backend lives in [`crates/coldvox-gui-qt`](../../../crates/coldvox-gui-qt/README.md). It is intentionally excluded from the root Cargo workspace so `cargo check --workspace` still succeeds on machines without Qt installed.
