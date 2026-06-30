@@ -123,7 +123,12 @@ fn set_overlay_expanded(
     app: AppHandle,
 ) -> CommandResult {
     let snapshot = runtime.with_model(|model| model.set_expanded(expanded));
-    emit_and_resize(&app, &window, &snapshot, if expanded { "expanded" } else { "collapsed" })
+    emit_and_resize(
+        &app,
+        &window,
+        &snapshot,
+        if expanded { "expanded" } else { "collapsed" },
+    )
 }
 
 // ── Commands: lifecycle (async) ────────────────────────────────────────────
@@ -399,7 +404,10 @@ async fn start_pipeline_async(
     slot: Arc<AsyncMutex<Option<Arc<ColdVoxHandle>>>>,
     window: WebviewWindow,
 ) -> CommandResult {
-    let runtime = OverlayRuntime { model, app_handle: slot };
+    let runtime = OverlayRuntime {
+        model,
+        app_handle: slot,
+    };
     // Reuse the command body by reconstructing the minimal runtime view.
     // We can't call the `#[tauri::command]` directly (it needs `State`), so
     // inline the same logic. Keeping the two in sync is acceptable for now;
@@ -474,7 +482,10 @@ async fn stop_pipeline_async(
     slot: Arc<AsyncMutex<Option<Arc<ColdVoxHandle>>>>,
     window: WebviewWindow,
 ) -> CommandResult {
-    let runtime = OverlayRuntime { model, app_handle: slot };
+    let runtime = OverlayRuntime {
+        model,
+        app_handle: slot,
+    };
     let mut handle_guard = runtime.app_handle.lock().await;
     if let Some(handle) = handle_guard.take() {
         handle.shutdown().await;

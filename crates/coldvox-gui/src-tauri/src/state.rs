@@ -99,8 +99,7 @@ impl OverlayModel {
         self.snapshot.partial_transcript.clear();
         self.snapshot.final_transcript.clear();
         self.snapshot.error_message = None;
-        self.snapshot.status_detail =
-            "Transcript cleared. Capture state is unchanged.".to_string();
+        self.snapshot.status_detail = "Transcript cleared. Capture state is unchanged.".to_string();
         self.snapshot()
     }
 
@@ -323,7 +322,10 @@ mod tests {
         model.apply_error("boom2".to_string());
         assert!(model.apply_processing_state(None).error_message.is_none());
         model.apply_error("boom3".to_string());
-        assert!(model.update_partial("hi".to_string()).error_message.is_none());
+        assert!(model
+            .update_partial("hi".to_string())
+            .error_message
+            .is_none());
         model.apply_error("boom4".to_string());
         assert!(model.update_final("hi".to_string()).error_message.is_none());
     }

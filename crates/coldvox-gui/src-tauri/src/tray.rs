@@ -162,13 +162,7 @@ fn menu_for(app: &AppHandle, status: OverlayStatus) -> tauri::Result<Menu> {
         true,
         None::<&str>,
     )?;
-    let quit = MenuItem::with_id(
-        app,
-        TrayCommand::Quit.menu_id(),
-        "Quit",
-        true,
-        None::<&str>,
-    )?;
+    let quit = MenuItem::with_id(app, TrayCommand::Quit.menu_id(), "Quit", true, None::<&str>)?;
 
     Menu::with_items(
         app,
