@@ -68,11 +68,7 @@ fn start_pipeline(
         for step in demo_script() {
             // Exit early if a stop/clear has invalidated this demo session.
             {
-                let model = app_handle
-                    .state::<OverlayState>()
-                    .inner()
-                    .lock()
-                    .unwrap();
+                let model = app_handle.state::<OverlayState>().inner().lock().unwrap();
                 if model.current_demo_token() != token {
                     return;
                 }
@@ -84,11 +80,7 @@ fn start_pipeline(
             }
 
             let snapshot = {
-                let mut model = app_handle
-                    .state::<OverlayState>()
-                    .inner()
-                    .lock()
-                    .unwrap();
+                let mut model = app_handle.state::<OverlayState>().inner().lock().unwrap();
                 if model.current_demo_token() != token {
                     return;
                 }
@@ -102,20 +94,14 @@ fn start_pipeline(
 }
 
 #[tauri::command]
-fn toggle_pause_state(
-    app: AppHandle,
-    state: State<'_, OverlayState>,
-) -> OverlaySnapshot {
+fn toggle_pause_state(app: AppHandle, state: State<'_, OverlayState>) -> OverlaySnapshot {
     let snapshot = state.lock().unwrap().toggle_pause();
     emit_snapshot(&app, "toggle_pause", &snapshot);
     snapshot
 }
 
 #[tauri::command]
-fn stop_pipeline(
-    app: AppHandle,
-    state: State<'_, OverlayState>,
-) -> tauri::Result<OverlaySnapshot> {
+fn stop_pipeline(app: AppHandle, state: State<'_, OverlayState>) -> tauri::Result<OverlaySnapshot> {
     let snapshot = state.lock().unwrap().stop();
     if let Some(window) = app.get_webview_window("main") {
         sync_window(&window, &snapshot)?;
@@ -176,10 +162,7 @@ fn update_final_transcript(
 }
 
 #[tauri::command]
-fn set_overlay_processing(
-    app: AppHandle,
-    state: State<'_, OverlayState>,
-) -> OverlaySnapshot {
+fn set_overlay_processing(app: AppHandle, state: State<'_, OverlayState>) -> OverlaySnapshot {
     let snapshot = state.lock().unwrap().apply_processing_state(None);
     emit_snapshot(&app, "processing", &snapshot);
     snapshot
@@ -235,4 +218,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running ColdVox GUI");
 }
-
