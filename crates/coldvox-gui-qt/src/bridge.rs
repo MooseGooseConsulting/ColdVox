@@ -181,7 +181,6 @@ impl GuiBridge {
                                         TranscriptionEvent::Final { text, .. } => {
                                             let owned = text.to_string();
                                             let q = QString::from(&owned);
-                                            let qt_for_final = qt_thread_for_stt.clone();
                                             qt_thread_for_stt.queue(move |mut b| {
                                                 let existing =
                                                     b.as_ref().final_transcript().to_string();
@@ -195,7 +194,6 @@ impl GuiBridge {
                                                 b.as_mut()
                                                     .set_partial_transcript(QString::default());
                                                 b.as_mut().transcript_final(q);
-                                                let _ = qt_for_final;
                                             });
                                         }
                                         TranscriptionEvent::Error { message, .. } => {
@@ -263,7 +261,9 @@ impl GuiBridge {
                 });
             });
         } else {
-            tracing::warn!("cmd_stop: no live runtime handle in slot; transitioning to Idle anyway");
+            tracing::warn!(
+                "cmd_stop: no live runtime handle in slot; transitioning to Idle anyway"
+            );
         }
 
         self.set_state(AppState::Idle);
