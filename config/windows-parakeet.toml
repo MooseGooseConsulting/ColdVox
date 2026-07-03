@@ -6,9 +6,12 @@
 # `config/plugins.json` remains plugin-manager persistence and does not replace
 # this file when launching `coldvox` directly.
 #
-# This profile targets the parakeet-cpu container brought up by
-# `ops/parakeet/docker-compose.yml` on http://localhost:5092 (OpenAI-compatible
-# /v1/audio/transcriptions API). Bring it up with:
+# This profile carries no `[stt.remote]` endpoint config: the remote HTTP
+# endpoint (canonical: the cluster parakeet service at http://192.168.30.207:5092)
+# is inherited from `config/default.toml`. Override `[stt.remote] base_url`
+# there (or in a copy of this file) to point at the local compose fallback
+# (ops/parakeet/docker-compose.yml on http://localhost:5092). Bring the
+# fallback container up with:
 #
 #     just parakeet-up
 #     just parakeet-health

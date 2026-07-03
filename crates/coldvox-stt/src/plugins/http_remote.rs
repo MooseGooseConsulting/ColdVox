@@ -90,6 +90,14 @@ impl Default for HttpRemoteConfig {
 }
 
 impl HttpRemoteConfig {
+    /// Canonical Parakeet CPU profile for the `http-remote` plugin.
+    ///
+    /// The canonical deployment of this service is the k8s cluster endpoint
+    /// `http://192.168.30.207:5092` (Deployment `parakeet` in namespace `apps`,
+    /// coldaine-k8cluster repo), which `config/default.toml` points at via
+    /// `[stt.remote] base_url`. The `localhost:5092` value below is a built-in
+    /// fallback matching the local compose profile (`ops/parakeet/docker-compose.yml`)
+    /// for offline dev; runtime config always overrides it.
     pub fn canonical_parakeet_cpu() -> Self {
         Self {
             profile_id: Some("http-remote".into()),

@@ -67,7 +67,9 @@ fn test_settings_from_path_uses_repo_remote_transport_defaults() {
         Some("http-remote"),
         "canonical plugin selection must stay on http-remote"
     );
-    assert_eq!(settings.stt.remote.base_url, "http://localhost:5092");
+    // config/default.toml points at the canonical cluster parakeet endpoint;
+    // the built-in code default (tested above) remains the localhost fallback.
+    assert_eq!(settings.stt.remote.base_url, "http://192.168.30.207:5092");
     assert_eq!(settings.stt.remote.api_path, "/v1/audio/transcriptions");
     assert_eq!(settings.stt.remote.health_path, "/health");
     assert_eq!(settings.stt.remote.model_name, "parakeet-tdt-0.6b-v2");
