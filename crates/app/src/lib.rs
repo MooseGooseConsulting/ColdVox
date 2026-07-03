@@ -777,7 +777,8 @@ mod tests {
 
         let remote = settings.runtime_http_remote_config();
         assert_eq!(remote.profile_id.as_deref(), Some("http-remote"));
-        assert_eq!(remote.base_url, "http://localhost:5092");
+        // config/default.toml points at the canonical cluster parakeet endpoint.
+        assert_eq!(remote.base_url, "http://192.168.30.207:5092");
         assert_eq!(remote.api_path, "/v1/audio/transcriptions");
         assert_eq!(remote.health_path, "/health");
         assert_eq!(remote.model_name, "parakeet-tdt-0.6b-v2");

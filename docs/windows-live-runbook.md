@@ -16,6 +16,19 @@ This is the Windows operator path for the canonical Parakeet HTTP/container lane
 
 The checked-in startup config must stay safe for normal development. Use the Parakeet commands below to opt into the live-capable path instead of changing global defaults.
 
+## Remote STT endpoint (http-remote profile)
+
+The canonical remote Parakeet endpoint is the k8s cluster service at
+`http://192.168.30.207:5092` (apps/parakeet in coldaine-k8cluster), which
+`config/default.toml` points at by default — no container startup is needed
+for the primary remote path. The local compose profile
+(`ops/parakeet/docker-compose.yml` on `http://localhost:5092`) remains the
+offline dev fallback; override `[stt.remote] base_url` to use it.
+
+The sections below cover the local-GPU Parakeet plugin path
+(`config/windows-parakeet.toml`), which needs a local model, not the HTTP
+endpoint.
+
 ## Prerequisites
 
 - Windows 11

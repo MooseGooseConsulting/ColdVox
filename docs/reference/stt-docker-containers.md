@@ -16,7 +16,7 @@ Evaluated speech-to-text models and Docker containers on an RTX 5090 (32 GB VRAM
 
 All benchmarks run against ColdVox WAV files (`D:\_projects\ColdVox\crates\app\test_data\test_{1-5}.wav`).
 
-**Canonical wave-1 backend profile for the HTTP container hardening workstream:** **Parakeet CPU on `http://localhost:5092`**. Repo-owned docs, launcher defaults, and config comments should treat that OpenAI-compatible `/v1/audio/transcriptions` + `/health` profile as the one first-class backend for this workstream. Moonshine, Granite, Qwen3-ASR, and Voxtral remain deferred comparison/non-default profiles here.
+**Canonical wave-1 backend profile for the HTTP container hardening workstream:** **Parakeet CPU on the cluster endpoint `http://192.168.30.207:5092`** (Deployment `parakeet` in namespace `apps`, coldaine-k8cluster repo, LoadBalancer `parakeet-lan`; same digest-pinned `ghcr.io/achetronic/parakeet` image). No local container startup is needed for the primary path — `config/default.toml` already points at it. Repo-owned docs, launcher defaults, and config comments should treat that OpenAI-compatible `/v1/audio/transcriptions` + `/health` profile as the one first-class backend for this workstream. The local compose profile (`ops/parakeet/docker-compose.yml` on `http://localhost:5092`) remains the offline dev fallback. Moonshine, Granite, Qwen3-ASR, and Voxtral remain deferred comparison/non-default profiles here.
 
 **Frozen ColdVox client upload contract for wave 1:** ColdVox uploads mono 16 kHz 16-bit WAV audio to `POST /v1/audio/transcriptions`, probes `GET /health`, and expects JSON containing `text`. That is the ColdVox client contract only; it is not a claim that every backend only accepts that exact audio shape.
 
@@ -365,7 +365,7 @@ Supports model swapping: `Systran/faster-whisper-tiny`, `small`, `medium`, `larg
 docker run -d --name parakeet-cpu -p 5092:5092 ghcr.io/achetronic/parakeet:latest
 ```
 
-**Use case**: Canonical wave-1 ColdVox HTTP container profile — local `http://localhost:5092` with OpenAI-compatible `POST /v1/audio/transcriptions` and `GET /health`, while avoiding GPU contention.
+**Use case**: Canonical wave-1 ColdVox HTTP container profile — OpenAI-compatible `POST /v1/audio/transcriptions` and `GET /health`, while avoiding GPU contention. The primary deployment is the k8s cluster endpoint `http://192.168.30.207:5092` (apps/parakeet in coldaine-k8cluster; no local startup needed). Running it locally via `docker run` above or `ops/parakeet/docker-compose.yml` on `http://localhost:5092` is the offline dev fallback.
 
 **Source**: [github.com/achetronic/parakeet](https://github.com/achetronic/parakeet)
 
@@ -543,7 +543,7 @@ print(result.text)
 | **Real-time streaming** | Nemotron Streaming 0.6B (not tested) | Purpose-built, configurable latency |
 | **Speaker diarization** | VibeVoice-ASR (not tested) | ASR + diarization in one model |
 | **99-language coverage** | Whisper large-v3 (faster-whisper Docker) | Broadest language support |
-| **ColdVox wave-1 HTTP container default** | Parakeet CPU (`http://localhost:5092`) | Canonical first-class backend profile; OpenAI-compatible `/v1/audio/transcriptions` + `/health` |
+| **ColdVox wave-1 HTTP container default** | Parakeet CPU on cluster (`http://192.168.30.207:5092`; local compose on `localhost:5092` as fallback) | Canonical first-class backend profile; OpenAI-compatible `/v1/audio/transcriptions` + `/health` |
 | **Deferred comparison profiles** | Moonshine, Granite, Qwen3-ASR, Voxtral | Useful benchmarks and follow-on options, but not first-wave default obligations |
 
 ---
@@ -552,7 +552,7 @@ print(result.text)
 
 | Port | Service | Type | Status |
 |---|---|---|---|
-| 5092 | Parakeet CPU | Docker (achetronic) | Available |
+| 5092 | Parakeet CPU | Cluster `192.168.30.207` (apps/parakeet, achetronic image); local Docker fallback | **Primary** |
 | 5093 | IBM Granite 4.0 1B | Native Python | **Installed** |
 | 5094 | Qwen3-ASR-1.7B | Native Python | **Installed** |
 | 5095 | Voxtral-Mini-4B | Native Python | **Installed** |

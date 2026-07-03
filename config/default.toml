@@ -70,8 +70,11 @@ debug_dump_events = false
 auto_extract = true
 
 [stt.remote]
-# Transport defaults for the canonical Parakeet HTTP container profile.
-base_url = "http://localhost:5092"
+# Transport defaults for the canonical Parakeet HTTP profile.
+# Canonical deployment: parakeet on the k8s cluster (apps/parakeet in coldaine-k8cluster),
+# exposed at the static LAN LoadBalancer below. The local compose profile
+# (ops/parakeet/docker-compose.yml on http://localhost:5092) remains a dev/offline fallback.
+base_url = "http://192.168.30.207:5092"
 api_path = "/v1/audio/transcriptions"
 health_path = "/health"
 model_name = "parakeet-tdt-0.6b-v2"

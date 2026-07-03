@@ -70,7 +70,7 @@ try {
     Write-Host "==> Adding $base to PATH..." -ForegroundColor Blue
     $env:PATH = "$base;$env:PATH"
 
-    Write-Host "==> Starting ColdVox with canonical HTTP remote profile (Parakeet CPU on http://localhost:5092)..." -ForegroundColor Green
+    Write-Host "==> Starting ColdVox with canonical HTTP remote profile (Parakeet on cluster endpoint http://192.168.30.207:5092; local compose on localhost:5092 is the offline fallback)..." -ForegroundColor Green
     cargo run -p coldvox-app --bin coldvox --features http-remote,text-injection
 } finally {
     Pop-Location
