@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   DEFAULT_SNAPSHOT,
   type OverlaySnapshot,
@@ -33,6 +34,10 @@ function messageFromError(error: unknown): string {
 
 export function useOverlayShell() {
   const [snapshot, setSnapshot] = useState<OverlaySnapshot>(DEFAULT_SNAPSHOT);
+  // Live mic input level (0..1 RMS), forwarded from the Tauri backend's
+  // audio-frame subscription. rAF-throttled on the render side so per-frame
+  // emits from Rust don't flood React state.
+  const [micLevel, setMicLevel] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -68,6 +73,54 @@ export function useOverlayShell() {
       });
     };
   }, []);
+
+  // Mic-level meter: subscribe to the backend's `mic-level` event (a normalized
+  // RMS per audio frame) and rAF-throttle state writes so high-frequency emits
+  // don't trigger a React re-render per frame. In dev (vitest / vite without
+  // the Tauri host) `listen` rejects because there is no IPC bridge — the
+  // `.catch()` swallows that so the hook degrades to a silent no-op meter
+  // instead of surfacing an unhandled promise rejection on every mount.
+  useEffect(() => {
+    let active = true;
+    let pending: number | null = null;
+    let raf = 0;
+
+    const flush = () => {
+      raf = 0;
+      if (pending !== null && active) {
+        setMicLevel(pending);
+        pending = null;
+      }
+    };
+
+    const unlistenPromise = listen<number>("mic-level", (event) => {
+      pending = event.payload;
+      if (raf === 0) {
+        raf = requestAnimationFrame(flush);
+      }
+    }).catch(() => {
+      return () => {};
+    });
+
+    return () => {
+      active = false;
+      if (raf !== 0) {
+        cancelAnimationFrame(raf);
+      }
+      void unlistenPromise.then((unlisten) => {
+        unlisten();
+      });
+    };
+  }, []);
+
+  // Decay the meter toward zero when not actively listening so a frozen last
+  // value doesn't linger on screen.
+  useEffect(() => {
+    if (snapshot.status === "listening" || snapshot.status === "processing") {
+      return;
+    }
+    setMicLevel(0);
+  }, [snapshot.status]);
 
   const runCommand = useCallback(
     async (command: () => Promise<OverlaySnapshot>) => {
@@ -131,6 +184,7 @@ export function useOverlayShell() {
 
   return {
     snapshot,
+    micLevel,
     setExpanded: (expanded: boolean) => runCommand(() => setOverlayExpanded(expanded)),
     startPipeline: () => runCommand(startPipeline),
     togglePause: () => runCommand(togglePauseState),
