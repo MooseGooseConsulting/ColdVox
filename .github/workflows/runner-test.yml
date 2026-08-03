@@ -45,7 +45,7 @@ jobs:
       - name: Test Cargo.lock compatibility
         run: |
           echo "Testing Cargo.lock parsing (this was the original failure point):"
-          git clone https://github.com/Coldaine/ColdVox.git /tmp/coldvox-test
+          git clone https://github.com/MooseGooseConsulting/ColdVox.git /tmp/coldvox-test
           cd /tmp/coldvox-test
           echo "Attempting cargo check (should not fail on lockfile format)..."
           cargo check --workspace --verbose || echo "Cargo check failed - but lockfile parsing should have succeeded"
