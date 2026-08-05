@@ -23,7 +23,7 @@ coldvox-foundation = { path = "../coldvox-foundation" }
 coldvox-stt = { path = "../coldvox-stt" }
 
 # Backend dependencies (all optional)
-atspi = { version = "0.29", optional = true }
+atspi = { version = "0.30", optional = true }
 wl-clipboard-rs = { version = "0.9", optional = true }
 enigo = { version = "0.6", optional = true }
 regex = { version = "1.12", optional = true }
@@ -35,13 +35,13 @@ unicode-segmentation = "1.13"
 
 [dev-dependencies]
 tempfile = "3.27"
-mockall = "0.14"
+mockall = "0.15"
 tokio-test = "0.4"
 rand = "0.10"
 arboard = "3.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
-serial_test = "3.4"
+serial_test = "4.0"
 
 [features]
 default = []

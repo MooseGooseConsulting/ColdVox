@@ -21,7 +21,7 @@ coldvox-telemetry = { path = "../coldvox-telemetry" }
 parakeet-rs = { version = "0.2", optional = true }
 
 # Moonshine STT via PyO3/HuggingFace - Fixed auto-initialize
-pyo3 = { version = "0.28", optional = true, features = ["auto-initialize"] }
+pyo3 = { version = "0.29", optional = true, features = ["auto-initialize"] }
 tempfile = { version = "3.27", optional = true }
 hound = { version = "3.5", optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["multipart"], optional = true }
@@ -36,7 +36,7 @@ parakeet-tensorrt = ["parakeet", "parakeet-rs/tensorrt"]
 
 [dev-dependencies]
 tokio = { version = "1.52", features = ["rt-multi-thread", "macros", "io-util", "net", "time"] }
-serial_test = "3.4"
+serial_test = "4.0"
 hound = "3.5"
 
 # Gate moonshine example behind feature flag
