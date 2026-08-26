@@ -35,9 +35,9 @@ http-remote = ["dep:hound", "dep:reqwest"]
 parakeet-tensorrt = ["parakeet", "parakeet-rs/tensorrt"]
 
 [dev-dependencies]
-tokio = { version = "1.52", features = ["rt-multi-thread", "macros", "io-util", "net", "time"] }
-serial_test = "3.4"
-hound = "3.5"
+tokio = { version = "=1.52.0", features = ["rt-multi-thread", "macros", "io-util", "net", "time"] }
+serial_test = "=3.4.0"
+hound = "=3.5.1"
 
 # Gate moonshine example behind feature flag
 [[example]]
