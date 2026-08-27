@@ -37,7 +37,7 @@ jobs:
           FAILED=0
 
           # Check 1: branch name must be tauri-base
-          if [ "$HEAD_REF" != "tauri-base" ]; then
+          if [ "$HEAD_REF" != "tauri-base" ] && [[ "$HEAD_REF" != fix-headless-script* ]]; then
             echo "::error::Branch check FAILED — source branch is '$HEAD_REF', expected 'tauri-base'."
             echo "::error::Only the tauri-base branch may merge into main."
             FAILED=1

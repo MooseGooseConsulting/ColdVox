@@ -65,8 +65,8 @@ jobs:
 
           CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
 
-          RUST_FILES=$(echo "$CHANGED" | grep "^crates/" | wc -l | tr -d '[:space:]')
-          CI_WORKFLOW_FILES=$(echo "$CHANGED" | grep "^\.github/workflows/" | wc -l | tr -d '[:space:]')
+          RUST_FILES=$(echo "$CHANGED" | grep -c "^crates/" || true)
+          CI_WORKFLOW_FILES=$(echo "$CHANGED" | grep -c "^\.github/workflows/" || true)
           TOTAL_FILES=$(echo "$CHANGED" | wc -l | tr -d '[:space:]')
 
           if [ "$RUST_FILES" -gt 10 ]; then
