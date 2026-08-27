@@ -80,7 +80,7 @@ The `deny.toml` file in the repository root configures cargo-deny:
 
 ## Mixed Rust + Python Tooling (Dec 2025)
 
-- **uv (Python 3.13-ready)**: Use `uv` for Python env + lockfiles; leverage its global cache to keep CI downloads minimal across runners. Treat `uv lock` as the single source of truth for Python deps; prefer `uv tool install` for CLI tools (ruff, maturin).
+- **uv (Python 3.13-ready)**: Use `uv` for Python env + lockfiles; use its global cache to keep CI downloads minimal across runners. Treat `uv lock` as the single source of truth for Python deps; prefer `uv tool install` for CLI tools (ruff, maturin).
 - **maturin for packaging**: Build PyO3 wheels with `maturin build -r` and install in CI with `maturin develop` when you need editable bindings. Prefer `uv tool run maturin ...` so we do not rely on system pip. Follow PyO3 0.27 guidance for free-threaded Python 3.13 by enabling the `abi3-py313` or interpreter-specific feature in the binding crates as needed.
 - **Rust/Python interface hygiene**: Avoid `pyo3` debug builds in CI; set `PYO3_CONFIG_FILE` only when linking against non-system Python. For embedded Python, ensure `python3-devel` is present on self-hosted runners and keep `extension-module` + `auto-initialize` features constrained to the crates that need them.
 - **Shared caching**: Keep `target/` out of VCS; rely on Swatinem `rust-cache` in GitHub Actions plus `uv` global cache for Python wheels.
