@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "e2e": "playwright test",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -15,6 +16,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@tauri-apps/cli": "2.10.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",

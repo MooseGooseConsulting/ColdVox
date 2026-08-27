@@ -2,10 +2,19 @@
 name = "coldvox-gui"
 version = "0.1.0"
 edition = "2021"
-description = "Windows GUI stub smoke for ColdVox"
+description = "Tauri host shell for the ColdVox overlay"
 publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2.10.3", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-os = "2"
+tauri-plugin-notification = "2"

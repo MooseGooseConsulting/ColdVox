@@ -3,5 +3,25 @@
   "identifier": "default",
   "description": "Default capability set for the ColdVox overlay shell.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "log:default",
+    "os:default",
+    "notification:default",
+    "dialog:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPCONFIG/**" },
+        { "path": "$APPDATA/**" },
+        { "path": "$RESOURCE/**" }
+      ]
+    },
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir"
+  ]
 }

@@ -170,18 +170,6 @@ jobs:
           echo "=== Running Tests ==="
           cargo test --workspace --locked --
 
-      # GUI groundwork check integrated here
-      - name: Detect and test Qt 6 GUI
-        if: matrix.rust-version == 'stable'
-        run: |
-          if bash scripts/ci/detect-qt6.sh
-            then
-            echo "✅ Qt 6 detected - building GUI"
-            cargo check -p coldvox-gui --features qt-ui --locked
-          else
-            echo "⚠️ Qt 6 not detected - skipping GUI build"
-          fi
-
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

@@ -79,6 +79,12 @@ crates/app/.coldvox/*
 node_modules/
 dist/
 
+# Playwright
+crates/coldvox-gui/test-results/
+crates/coldvox-gui/playwright-report/
+crates/coldvox-gui/blob-report/
+crates/coldvox-gui/playwright/.cache/
+
 # Binary executables and archives
 actionlint
 actionlint.tar.gz

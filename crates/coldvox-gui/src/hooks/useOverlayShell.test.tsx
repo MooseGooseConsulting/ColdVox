@@ -21,7 +21,7 @@ const bridgeMocks = vi.hoisted(() => {
     setOverlayExpanded: vi
       .fn<(expanded: boolean) => Promise<OverlaySnapshot>>()
       .mockImplementation(async (expanded) => ({ ...idleSnapshot, expanded })),
-    startDemoDriver: vi.fn<() => Promise<OverlaySnapshot>>().mockResolvedValue({
+    startPipeline: vi.fn<() => Promise<OverlaySnapshot>>().mockResolvedValue({
       ...idleSnapshot,
       expanded: true,
       status: "listening",
@@ -32,7 +32,7 @@ const bridgeMocks = vi.hoisted(() => {
       status: "listening",
       paused: true,
     }),
-    stopDemoDriver: vi.fn<() => Promise<OverlaySnapshot>>().mockResolvedValue(idleSnapshot),
+    stopPipeline: vi.fn<() => Promise<OverlaySnapshot>>().mockResolvedValue(idleSnapshot),
     clearOverlayTranscript: vi.fn<() => Promise<OverlaySnapshot>>().mockResolvedValue(idleSnapshot),
     openSettingsPlaceholder: vi
       .fn<() => Promise<OverlaySnapshot>>()
@@ -77,9 +77,9 @@ const bridgeMocks = vi.hoisted(() => {
 vi.mock("../lib/overlayBridge", () => ({
   getOverlaySnapshot: bridgeMocks.getOverlaySnapshot,
   setOverlayExpanded: bridgeMocks.setOverlayExpanded,
-  startDemoDriver: bridgeMocks.startDemoDriver,
+  startPipeline: bridgeMocks.startPipeline,
   togglePauseState: bridgeMocks.togglePauseState,
-  stopDemoDriver: bridgeMocks.stopDemoDriver,
+  stopPipeline: bridgeMocks.stopPipeline,
   clearOverlayTranscript: bridgeMocks.clearOverlayTranscript,
   openSettingsPlaceholder: bridgeMocks.openSettingsPlaceholder,
   subscribeToOverlayEvents: bridgeMocks.subscribeToOverlayEvents,
@@ -91,7 +91,7 @@ vi.mock("../lib/overlayBridge", () => ({
 }));
 
 function HookHarness() {
-  const { snapshot, setExpanded, startDemo } = useOverlayShell();
+  const { snapshot, setExpanded, startPipeline } = useOverlayShell();
 
   return (
     <div>
@@ -109,7 +109,7 @@ function HookHarness() {
       <button
         type="button"
         onClick={() => {
-          void startDemo();
+          void startPipeline();
         }}
       >
         demo
@@ -161,7 +161,7 @@ describe("useOverlayShell", () => {
 
     await waitFor(() => {
       expect(bridgeMocks.setOverlayExpanded).toHaveBeenCalledWith(true);
-      expect(bridgeMocks.startDemoDriver).toHaveBeenCalledTimes(1);
+      expect(bridgeMocks.startPipeline).toHaveBeenCalledTimes(1);
     });
   });
 });
