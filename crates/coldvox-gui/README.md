@@ -1,16 +1,19 @@
 # ColdVox GUI
 
-ColdVox now uses a **Tauri v2 + React** overlay shell under this folder.
+ColdVox uses a **Tauri v2 + React** overlay shell under this folder.
 
-This tranche replaces the old Qt/QML placeholder with a Windows-first transparent host shell that is intentionally narrow in scope:
+The Tauri backend wires all commands and events that the React frontend expects:
 
 - collapsed idle presence
 - expanded transcript panel
 - visible state feedback (`idle`, `listening`, `processing`, `ready`, `error`)
 - clear separation between live partial text and committed final text
-- typed Tauri command/event seam exercised by a demo driver
+- typed Tauri command/event seam exercised by a built-in demo driver
+- seam for real STT/capture wiring via `update_partial_transcript`,
+  `update_final_transcript`, `set_overlay_listening`, `set_overlay_processing`,
+  and `stop_overlay_capture` commands
 
-It is **not** a Mini lift-and-shift and it does **not** wire real STT, injection, hotkeys, or settings persistence yet.
+It does **not** wire real STT, injection, hotkeys, or settings persistence yet.
 
 ## Layout
 
@@ -23,13 +26,18 @@ crates/coldvox-gui/
 │   └── lib/
 └── src-tauri/              # Rust Tauri host shell package
     └── src/
+        ├── lib.rs          # Tauri app bootstrap + all command handlers
+        ├── contract.rs     # Shared snapshot/event types (Rust ↔ TS contract)
+        ├── state.rs        # OverlayModel state machine
+        ├── demo.rs         # Demo script and DemoStep type
+        └── window.rs       # Window sizing helpers
 ```
 
 ## Key Entry Points
 
 - Frontend shell: [`src/App.tsx`](./src/App.tsx)
 - Frontend contract hook: [`src/hooks/useOverlayShell.ts`](./src/hooks/useOverlayShell.ts)
-- Rust host shell: [`src-tauri/src/lib.rs`](./src-tauri/src/lib.rs)
+- Rust command handlers: [`src-tauri/src/lib.rs`](./src-tauri/src/lib.rs)
 - Rust state model: [`src-tauri/src/state.rs`](./src-tauri/src/state.rs)
 
 ## Development Commands
@@ -50,8 +58,23 @@ cargo check -p coldvox-gui
 cargo test -p coldvox-gui
 ```
 
+## Wiring Real STT
+
+When real STT arrives, the pipeline can drive the overlay by calling the
+following Tauri commands (already registered and backed by `OverlayModel`):
+
+| Command | Purpose |
+|---|---|
+| `set_overlay_listening` | New utterance started |
+| `update_partial_transcript` | Stream partial words |
+| `set_overlay_processing` | Finalising utterance |
+| `update_final_transcript` | Committed result |
+| `stop_overlay_capture` | End of capture session |
+
 ## Current Runtime Reality
 
-- The frontend renders a restrained overlay shell, not the final product UI.
-- The Rust side owns window sizing/bootstrap plus demo command/event emission.
-- The demo driver proves the UI contract end-to-end without touching the real audio/STT runtime.
+- The frontend renders a restrained overlay shell.
+- The Rust side owns window sizing, bootstrap, all command handlers, and
+  event emission.
+- The demo driver (`start_pipeline` command) exercises the full state machine
+  without touching the real audio/STT runtime.

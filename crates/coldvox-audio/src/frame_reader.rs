@@ -41,11 +41,7 @@ impl FrameReader {
     pub fn read_frame(&mut self, max_samples: usize) -> Option<AudioFrame> {
         if let Some(metrics) = &self.metrics {
             let available = self.consumer.slots();
-            let fill_percent = if self.capacity > 0 {
-                (available * 100) / self.capacity
-            } else {
-                0
-            };
+            let fill_percent = (available * 100).checked_div(self.capacity).unwrap_or(0);
             metrics.update_buffer_fill(BufferType::Capture, fill_percent);
         }
 
