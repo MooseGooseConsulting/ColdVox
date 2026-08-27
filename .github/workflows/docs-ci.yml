@@ -17,12 +17,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
 
@@ -41,7 +41,7 @@ jobs:
           uv run scripts/docs_semantic_review.py "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" --packet-out .artifacts/docs_semantic_review_packet.json --prompt-out .artifacts/docs_semantic_review_prompt.md
 
       - name: Upload semantic review artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: docs-semantic-review
           path: .artifacts/docs_semantic_review_*

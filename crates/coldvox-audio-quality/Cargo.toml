@@ -22,10 +22,10 @@ ringbuf = "0.4"
 serde = { version = "1.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
-approx = "0.5"  # For floating point comparisons in tests
-criterion = "0.8"
-hound = "3.5"  # For loading real WAV files in integration tests
-walkdir = "2.4"  # For finding test files in directories
+approx = "=0.5.1"  # For floating point comparisons in tests
+criterion = "=0.8.2"
+hound = "=3.5.1"  # For loading real WAV files in integration tests
+walkdir = "=2.5.0"  # For finding test files in directories
 
 [[bench]]
 name = "audio_quality_benchmarks"

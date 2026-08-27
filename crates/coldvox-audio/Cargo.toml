@@ -26,5 +26,5 @@ default = []
 live-hardware-tests = []
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "=1.52.0", features = ["full"] }
 coldvox-vad = { path = "../coldvox-vad" }

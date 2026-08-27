@@ -94,14 +94,14 @@ cpal = "0.17.3"
 config = { version = "0.15", features = ["toml"] }
 
 [dev-dependencies]
-tempfile = "3.27"
-mockall = "0.14"
-tokio-test = "0.4"
-ctrlc = "3.5"
-proptest = "1.11"
-rand = "0.10"
-serial_test = "3.4"
-similar-asserts = "2.0"
+tempfile = "=3.27.0"
+mockall = "=0.14.0"
+tokio-test = "=0.4.5"
+ctrlc = "=3.5.2"
+proptest = "=1.11.0"
+rand = "=0.10.2"
+serial_test = "=3.5.0"
+similar-asserts = "=2.0.0"
 
 [features]
 default = ["silero", "text-injection"]

@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5.0.0
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
         with:
           toolchain: ${{ matrix.rust-version }}
           components: rustfmt, clippy
@@ -184,7 +184,7 @@ jobs:
 
       - name: Upload test artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: test-artifacts-build-${{ matrix.rust-version }}
           path: |
@@ -289,7 +289,7 @@ jobs:
 
       - name: Upload test artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: test-artifacts-text-injection
           path: |
@@ -325,7 +325,7 @@ jobs:
       - text_injection_tests
     if: always()
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Generate CI Report
         run: |
           echo "## CI Report" > report.md
@@ -340,7 +340,7 @@ jobs:
           if [[ "${{ needs.text_injection_tests.result }}" != "success" ]]; then echo "::error::Text injection tests failed."; exit 1; fi
           echo "All critical stages passed successfully."
       - name: Upload CI Report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ci-report
           path: report.md
